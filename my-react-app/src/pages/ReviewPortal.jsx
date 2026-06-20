@@ -1,6 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { CheckCircle, Edit3, Shield, ArrowLeft } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 export default function ReviewPortal() {
   const { patientId, taskId } = useParams();
@@ -78,14 +79,41 @@ export default function ReviewPortal() {
       {/* Main Content Side-by-Side */}
       <main className="flex-1 flex overflow-hidden p-6 gap-6">
         
-        {/* Left: Original Document */}
-        <div className="flex-1 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col">
-          <div className="bg-gray-100 border-b px-4 py-3 font-semibold text-gray-700 rounded-t-lg">
-            Original Document (Incoming Fax)
+        {/* Left: Documents and Context */}
+        <div className="flex-1 flex flex-col gap-6">
+          
+          {/* Top Left: Original Document */}
+          <div className="flex-1 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col min-h-[300px]">
+            <div className="bg-gray-100 border-b px-4 py-3 font-semibold text-gray-700 rounded-t-lg">
+              Original Document (Incoming Fax)
+            </div>
+            <div className="p-4 overflow-y-auto whitespace-pre-wrap text-sm text-gray-800 flex-1 font-mono bg-gray-50">
+  {loading ? "Loading fax..." : (taskData?.fax_text || "No document found.")}
+            </div>
           </div>
-          <div className="p-6 overflow-y-auto whitespace-pre-wrap text-sm text-gray-800 flex-1 font-mono bg-gray-50">
-{loading ? "Loading fax..." : (taskData?.fax_text || "No document found.")}
+
+          {/* Bottom Left: Patient EHR Context */}
+          <div className="flex-1 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col min-h-[300px]">
+            <div className="bg-purple-50 border-b border-purple-100 px-4 py-3 font-semibold text-purple-800 rounded-t-lg flex justify-between items-center">
+              <span>Patient EHR Context (FHIR Data)</span>
+              <span className="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full">Used by AI</span>
+            </div>
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
+                {loading ? (
+                  <div className="text-sm text-gray-500 font-mono">Loading EHR context...</div>
+                ) : (
+                  <div className="prose prose-sm max-w-none text-gray-800">
+                    <ReactMarkdown>
+                      {taskData?.patient_context || "No EHR context available."}
+                    </ReactMarkdown>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
+
         </div>
 
         {/* Right: Extracted Structured Form */}

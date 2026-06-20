@@ -1,10 +1,11 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from ai_triage import extract_referral_info, get_mock_fax_text
+from ai_triage import extract_referral_info, get_mock_fax_text, summarize_fhir_record
 from synthea_loader import PATIENTS
 from loop_engine import detect_loops
-from fhir_server import fhir_router, load_fhir_data
+from fhir_server import fhir_router, load_fhir_data, get_patient_everything
 import uuid
+import json
 
 # In-memory storage for active tasks so the React frontend can fetch their details
 TASKS = {}
@@ -102,10 +103,16 @@ async def triage_assistant(request: Request):
         
         # Get mock fax with real patient details
         dob = patient.get("birthDate", "Unknown")
-        fax_text = get_mock_fax_text(patient_id, patient_name, dob)
+        problems = patient.get("active_problems", [])
+        fax_text = get_mock_fax_text(patient_id, patient_name, dob, problems)
         
-        # Run AI extraction (or mock)
-        extraction = extract_referral_info(fax_text)
+        # Grep all FHIR records for this patient ID
+        patient_resources = get_patient_everything(patient_id)
+        # Summarize the FHIR data with AI to simplify it and remove noise
+        patient_summary_str = summarize_fhir_record(patient_resources)
+        
+        # Run AI extraction with the cleaned patient chart context
+        extraction = extract_referral_info(fax_text, patient_context=patient_summary_str)
         
         # We want to link to our React portal to review this.
         # Store the task in memory so the frontend can fetch the extracted data.
@@ -114,7 +121,8 @@ async def triage_assistant(request: Request):
             "taskId": task_id,
             "patientId": patient_id,
             "fax_text": fax_text,
-            "extraction": extraction
+            "extraction": extraction,
+            "patient_context": patient_summary_str
         }
         
         cards.append({
@@ -219,9 +227,13 @@ def get_task(task_id: str):
     Returns the details of a specific task, including the original fax text
     and the AI extraction. Used by the React Review Portal.
     """
+    print(f"[DEBUG] Fetching task {task_id}")
     if task_id in TASKS:
-        return TASKS[task_id]
+        task = TASKS[task_id]
+        print(f"[DEBUG] Found task {task_id}, context length: {len(task.get('patient_context', ''))}")
+        return task
     
+    print(f"[DEBUG] Task {task_id} not found in memory")
     # Fallback if task was lost due to server restart
     return {
         "taskId": task_id,
@@ -234,6 +246,67 @@ def get_task(task_id: str):
             "urgency": "Unknown"
         }
     }
+
+@app.get("/api/inbox")
+def get_global_inbox():
+    """
+    Returns ALL pending action items for the entire clinic.
+    Combines parsed fax referrals (TASKS) and detected loops (loop_engine).
+    """
+    cards = []
+    
+    # 1. Add all pending referral tasks
+    for task_id, task in TASKS.items():
+        extraction = task.get("extraction", {})
+        patient_name = extraction.get("patient_name", "Unknown Patient")
+        
+        # Determine indicator based on AI urgency
+        urgency = str(extraction.get("urgency", "")).lower()
+        indicator = "warning"
+        if "urgent" in urgency or "stat" in urgency:
+            indicator = "critical"
+            
+        cards.append({
+            "summary": f"Pending Referral for {patient_name}",
+            "indicator": indicator,
+            "source": { "label": "Smart Triage Assistant" },
+            "detail": f"AI detected a new {extraction.get('specialty', 'specialist')} referral request. Please review.",
+            "links": [{
+                "label": "Review Referral Form",
+                "url": f"https://lohp.ryanbeland.dev/portal/review/{task['patientId']}/{task_id}",
+                "type": "absolute"
+            }]
+        })
+        
+    # 2. Add all open loops
+    all_loops = detect_loops()
+    for loop in all_loops:
+        indicator = "info"
+        if loop["severity"] == "CRITICAL":
+            indicator = "critical"
+        elif loop["severity"] == "HIGH":
+            indicator = "warning"
+
+        cards.append({
+            "summary": loop["summary"],
+            "indicator": indicator,
+            "source": { "label": "Loop Engine" },
+            "detail": f"This loop has been open for {loop['days_open']} days. Please review.",
+            "links": [{
+                "label": "View Details in Portal",
+                "url": f"https://lohp.ryanbeland.dev/portal/loop/{loop['id']}",
+                "type": "absolute"
+            }]
+        })
+        
+    # Sort cards: critical first, then warning, then info
+    def sort_key(card):
+        order = {"critical": 0, "warning": 1, "info": 2, "success": 3}
+        return order.get(card.get("indicator", "info"), 99)
+        
+    cards.sort(key=sort_key)
+    
+    return {"cards": cards}
 
 @app.get("/api/metrics")
 def get_accuracy_metrics():
@@ -254,4 +327,41 @@ def get_accuracy_metrics():
         "total_at_risk_dollars": sum(
             l["context"].get("total_at_risk", 0) for l in all_loops
         ),
+    }
+
+@app.get("/api/status")
+def get_system_status():
+    import os
+    from fhir_server import FHIR_DB
+    from synthea_loader import PATIENTS
+    
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    gemini_status = "Not Configured"
+    if gemini_key:
+        if len(gemini_key) > 10:
+            gemini_status = f"Configured (ends in ...{gemini_key[-4:]})"
+        else:
+            gemini_status = "Configured (key too short?)"
+            
+    try:
+        import google.generativeai as genai
+        genai_installed = True
+    except ImportError:
+        genai_installed = False
+
+    return {
+        "backend": "Online",
+        "fhir_server": {
+            "status": "Online" if FHIR_DB else "Empty",
+            "total_resources": sum(len(v) for v in FHIR_DB.values()),
+            "resource_types": list(FHIR_DB.keys())
+        },
+        "ai_integration": {
+            "gemini_api_key": gemini_status,
+            "google_genai_package": "Installed" if genai_installed else "Missing",
+            "ready": bool(gemini_key and genai_installed)
+        },
+        "database": {
+            "patients_loaded": len(PATIENTS)
+        }
     }

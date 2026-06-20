@@ -107,15 +107,7 @@ export default function Dashboard() {
     }
     setLoading(true);
     setCards([]);
-    fetch('/cds-services/triage-assistant', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        hook: 'patient-view',
-        hookInstance: 'demo-dashboard-001',
-        context: { patientId: selectedPatientId },
-      }),
-    })
+    fetch('/api/inbox')
       .then(r => r.json())
       .then(data => setCards(data.cards || []))
       .catch(() => setCards([{
@@ -176,7 +168,11 @@ export default function Dashboard() {
             <Shield className="w-3 h-3" />
             Privacy by Design · Synthetic Data Only
           </div>
-          <Link to="/guide" className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium">
+          <Link to="/status" className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 font-medium">
+            <Activity className="w-4 h-4" />
+            System Status
+          </Link>
+          <Link to="/guide" className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium ml-2">
             <BookOpen className="w-4 h-4" />
             Integration Guide
           </Link>
@@ -246,21 +242,20 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Only show the CDS context panel when online */}
             {backendStatus === 'online' && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-4">
                 <h2 className="text-base font-bold text-blue-900 mb-1 flex items-center gap-2">
                   <Zap className="w-4 h-4" />
-                  CDS Hook Triggered — {selectedPatient?.name || selectedPatientId}
+                  ClinicOS Global Inbox
                 </h2>
                 <p className="text-sm text-blue-700">
-                  When the clinician opens this chart, Loop's backend receives a <code className="bg-blue-100 px-1 rounded text-xs">patient-view</code> CDS Hook, scans all open loops,
-                  and returns ranked action cards — injected directly into the EHR workflow. No new app, no new login.
+                  This is the clinic-wide dashboard. Loop's backend constantly scans the EHR for open loops and new referral faxes, 
+                  automatically surfacing and ranking them by clinical severity across all patients.
                 </p>
               </div>
             )}
 
-            <h3 className="text-base font-bold text-gray-800 border-b pb-2">Pending Action Items</h3>
+            <h3 className="text-base font-bold text-gray-800 border-b pb-2">Clinic-Wide Action Items</h3>
 
             {/* Loading spinner — only shown when actively fetching */}
             {loading && (
@@ -302,12 +297,11 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Empty state — backend online but no loops for this patient */}
             {!loading && backendStatus === 'online' && cards.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 text-center text-gray-400">
                 <CheckCircle className="w-12 h-12 text-green-300 mb-3" />
-                <div className="font-semibold text-gray-600">No open loops for this patient</div>
-                <div className="text-sm mt-1">Try selecting a different patient from the dropdown above.</div>
+                <div className="font-semibold text-gray-600">Inbox Zero</div>
+                <div className="text-sm mt-1">No open loops or pending tasks in the clinic.</div>
               </div>
             )}
 

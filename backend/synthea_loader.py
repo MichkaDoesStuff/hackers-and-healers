@@ -66,7 +66,8 @@ def _attach_conditions(patients: dict) -> None:
         # Only active conditions (no STOP date)
         if pid in patients and not row.get("STOP"):
             desc = row.get("DESCRIPTION", "")
-            if desc and desc not in patients[pid]["active_problems"]:
+            # Filter out Synthea social history findings like 'Educated to high school level (finding)'
+            if desc and "(finding)" not in desc and desc not in patients[pid]["active_problems"]:
                 patients[pid]["active_problems"].append(desc)
 
 
@@ -192,7 +193,7 @@ def _plant_problems(patients: dict, observations: list) -> tuple[list, list, lis
         {
             "id": "SR-PLANTED-CBC",
             "resourceType": "ServiceRequest",
-            "subject": p2,
+            "subject": p1,
             "code": {"code": "58410-2", "display": "Complete blood count (CBC) panel"},
             "status": "active",
             "authoredOn": _days_ago(14),
@@ -206,7 +207,7 @@ def _plant_problems(patients: dict, observations: list) -> tuple[list, list, lis
         {
             "id": "REF-PLANTED-CARDIO",
             "resourceType": "ServiceRequest",
-            "subject": p3,
+            "subject": p1,
             "intent": "referral",
             "specialty": "Cardiology",
             "reason": "Worsening dyspnoea on exertion, assess for cardiac resynchronisation therapy candidacy",
@@ -222,7 +223,7 @@ def _plant_problems(patients: dict, observations: list) -> tuple[list, list, lis
         # Plant #4 – rejected OHIP billing claim on p4
         {
             "id": "CLM-PLANTED-OHIP",
-            "subject": p4,
+            "subject": p1,
             "ohip_codes": [
                 {"code": "A007", "description": "Comprehensive consultation", "fee": 680.00},
                 {"code": "G539", "description": "Anxiety — complex psychosocial assessment", "fee": 165.00},

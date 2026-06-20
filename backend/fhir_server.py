@@ -110,6 +110,25 @@ def search_resources(resource_type: str, request: Request):
 
     return _build_bundle(resources)
 
+def get_patient_everything(patient_id: str):
+    """
+    Acts like a grep across the entire in-memory FHIR database.
+    Finds and returns every single resource that mentions the patient_id.
+    """
+    results = []
+    # If the patient exists, add the patient resource itself first
+    if "Patient" in FHIR_DB and patient_id in FHIR_DB["Patient"]:
+        results.append(FHIR_DB["Patient"][patient_id])
+        
+    for res_type, resources in FHIR_DB.items():
+        if res_type in ["Patient", "DocumentReference", "DiagnosticReport", "Provenance"]:
+            continue # Already handled or contains massive base64 payloads that freeze the UI
+        for res_id, res in resources.items():
+            # A programmatic 'grep' - if the patient_id appears anywhere in the JSON dump of the resource
+            if patient_id in str(res):
+                results.append(res)
+    return results
+
 def _build_bundle(resources):
     return {
         "resourceType": "Bundle",
