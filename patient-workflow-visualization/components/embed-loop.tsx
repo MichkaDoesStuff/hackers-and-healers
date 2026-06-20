@@ -6,9 +6,17 @@ import { useSearchParams } from "next/navigation"
 import type { Issue, Patient } from "@/lib/types"
 import { issuesForEmbed, patientForEmbed } from "@/lib/data"
 import { fetchClinic } from "@/lib/api"
+import { sandboxIssuesForPatient } from "@/lib/sandbox-data"
 import { parseCdsEmbedContext, formatFhirPatientRef } from "@/lib/cds-context"
 import { LoopPanel } from "./loop-panel"
 import { WorkflowOverlay } from "./workflow/workflow-overlay"
+
+function fhirPatientName(resource: Record<string, unknown>): string | null {
+  const names = resource.name as Array<{ given?: string[]; family?: string }> | undefined
+  if (!names?.[0]) return null
+  const n = names[0]
+  return [...(n.given ?? []), n.family ?? ""].filter(Boolean).join(" ")
+}
 
 export function EmbedLoop() {
   const searchParams = useSearchParams()
@@ -19,6 +27,17 @@ export function EmbedLoop() {
 
   const [patients, setPatients] = useState<Patient[]>([])
   const [openIssue, setOpenIssue] = useState<Issue | null>(null)
+  const [fhirName, setFhirName] = useState<string | null>(null)
+
+  const isSandboxPatient = Boolean(sandboxIssuesForPatient(context.patientId))
+  const demoPatient = useMemo(
+    () => patientForEmbed(patients, context.patientId),
+    [patients, context.patientId],
+  )
+  const issues = useMemo(
+    () => issuesForEmbed(patients, context.patientId),
+    [patients, context.patientId],
+  )
 
   useEffect(() => {
     fetchClinic()
@@ -26,26 +45,35 @@ export function EmbedLoop() {
       .catch(() => setPatients([]))
   }, [])
 
-  const issues = useMemo(() => issuesForEmbed(patients, context.patientId), [patients, context.patientId])
-  const patient = useMemo(() => patientForEmbed(patients, context.patientId), [patients, context.patientId])
+  useEffect(() => {
+    if (!context.patientId || demoPatient || isSandboxPatient) return
+    const id = context.patientId.replace(/^Patient\//, "")
+    fetch(`/fhir/Patient/${id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p) => {
+        if (p?.resourceType === "Patient") setFhirName(fhirPatientName(p))
+      })
+      .catch(() => {})
+  }, [context.patientId, demoPatient, isSandboxPatient])
 
   const patientRef = formatFhirPatientRef(context.patientId)
-  const showingDemoFallback = Boolean(context.patientId && !patient && issues.length > 0)
+  const displayName =
+    demoPatient?.name ?? fhirName ?? issues[0]?.patientName ?? null
+  const showingDemoFallback = Boolean(
+    context.patientId && !demoPatient && !isSandboxPatient && issues.length > 0,
+  )
 
   return (
     <div className="flex h-dvh flex-col bg-background">
-      <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-2.5">
-        <Lock className="size-3.5 shrink-0 text-muted-foreground" />
+      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-3 py-2">
+        <Lock className="size-3 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs text-muted-foreground">
-            loop.app/embed · opened from CDS Hooks Sandbox
-          </p>
-          {patientRef && (
-            <p className="truncate text-[11px] text-muted-foreground/80">
-              Chart context: {patientRef}
-              {patient ? ` · ${patient.name}` : ""}
-            </p>
-          )}
+          <p className="truncate text-xs font-medium text-foreground">Loop</p>
+          {displayName ? (
+            <p className="truncate text-[11px] text-muted-foreground">{displayName}</p>
+          ) : patientRef ? (
+            <p className="truncate text-[11px] text-muted-foreground">{patientRef}</p>
+          ) : null}
         </div>
         <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
           {context.hook ?? "patient-view"}
@@ -53,8 +81,8 @@ export function EmbedLoop() {
       </div>
 
       {showingDemoFallback && (
-        <p className="border-b border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
-          Sandbox patient is not mapped to live data yet — showing all open loops.
+        <p className="shrink-0 border-b border-border bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground">
+          Sample open loops — connect FHIR backend for live detection.
         </p>
       )}
 
@@ -62,16 +90,21 @@ export function EmbedLoop() {
         <LoopPanel
           issues={issues}
           onOpen={setOpenIssue}
+          compact
           subtitle={
-            patient
-              ? `Open loops for ${patient.name}`
-              : "Ranked open loops from your CDS session"
+            displayName
+              ? `Open loops for ${displayName}`
+              : "Ranked open loops from your chart session"
           }
-          className="h-full w-full border-l-0 lg:w-full"
+          className="h-full w-full border-l-0"
         />
       </div>
 
-      <WorkflowOverlay issue={openIssue} onClose={() => setOpenIssue(null)} />
+      <WorkflowOverlay
+        issue={openIssue}
+        onClose={() => setOpenIssue(null)}
+        compact
+      />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import type { Issue, Patient, Severity } from "./types"
+import { sandboxIssuesForPatient } from "./sandbox-data"
 
 export const SEVERITY_RANK: Record<Severity, number> = {
   critical: 0,
@@ -36,6 +37,7 @@ export function patientsRanked(patients: Patient[]): Patient[] {
     return b.issues.length - a.issues.length
   })
 }
+
 export function findIssue(patients: Patient[], id: string): Issue | undefined {
   return patients.flatMap((p) => p.issues).find((i) => i.id === id)
 }
@@ -44,8 +46,11 @@ function normalizePatientRef(ref: string): string {
   return ref.replace(/^Patient\//, "").toLowerCase()
 }
 
-/** Issues for the Loop embed — filters by CDS patient context when possible. */
+/** Issues for the Loop embed — sandbox samples, then live backend data. */
 export function issuesForEmbed(patients: Patient[], patientId?: string | null): Issue[] {
+  const sandbox = sandboxIssuesForPatient(patientId)
+  if (sandbox?.length) return sandbox
+
   const ranked = allIssuesRanked(patients)
   if (!patientId) return ranked
 
@@ -55,7 +60,7 @@ export function issuesForEmbed(patients: Patient[], patientId?: string | null): 
     return hay === needle || hay.includes(needle) || needle.includes(hay)
   })
 
-  return matched.length > 0 ? matched : ranked
+  return matched.length > 0 ? matched : ranked.slice(0, 4)
 }
 
 export function patientForEmbed(patients: Patient[], patientId?: string | null): Patient | undefined {

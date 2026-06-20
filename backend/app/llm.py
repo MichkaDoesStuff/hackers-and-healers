@@ -1,8 +1,8 @@
-"""Pluggable drafting LLM. Providers: anthropic | openai | fallback.
+"""Pluggable drafting LLM. Providers: vertex | anthropic | openai | fallback.
 
 The system runs with NO key: it falls back to deterministic template text so the
-whole approve/write-back flow works offline. Drop a key + set LLM_PROVIDER to
-upgrade the wording. The LLM only writes language — it never sets risk, never
+whole approve/write-back flow works offline. Drop ADC or a key + set LLM_PROVIDER
+to upgrade the wording. The LLM only writes language — it never sets risk, never
 writes to FHIR, never bypasses a gate.
 """
 from __future__ import annotations
@@ -12,6 +12,8 @@ import os
 PROVIDER = os.getenv("LLM_PROVIDER", "fallback").lower()
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+VERTEX_MODEL = os.getenv("GOOGLE_GENAI_MODEL", "gemini-2.5-flash")
+VERTEX_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 
 SYSTEM = (
     "You are a clinical workflow assistant for a primary-care safety-net tool. "
@@ -24,6 +26,8 @@ def draft(prompt: str, context: str) -> dict:
     """Return {text, model}. Never raises — falls back to a template on any error."""
     user = f"{prompt}\n\nContext:\n{context}"
     try:
+        if PROVIDER == "vertex" and os.getenv("GOOGLE_CLOUD_PROJECT"):
+            return _vertex(user)
         if PROVIDER == "anthropic" and os.getenv("ANTHROPIC_API_KEY"):
             return _anthropic(user)
         if PROVIDER == "openai" and os.getenv("OPENAI_API_KEY"):
@@ -31,6 +35,27 @@ def draft(prompt: str, context: str) -> dict:
     except Exception as e:  # any SDK/network/key error -> deterministic fallback
         return _fallback(context, note=f"LLM error: {e}")
     return _fallback(context)
+
+
+def _vertex(user: str) -> dict:
+    from google import genai
+
+    client = genai.Client(
+        vertexai=True,
+        project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+        location=VERTEX_LOCATION,
+    )
+    resp = client.models.generate_content(
+        model=VERTEX_MODEL,
+        contents=user,
+        config={
+            "system_instruction": SYSTEM,
+            "temperature": 0.2,
+            "max_output_tokens": 400,
+        },
+    )
+    text = (resp.text or "").strip()
+    return {"text": text, "model": VERTEX_MODEL}
 
 
 def _anthropic(user: str) -> dict:

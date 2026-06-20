@@ -4,13 +4,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+SYSTEM_PROMPT = (
+    "You are a clinical workflow assistant for a hackathon prototype. "
+    "Use only the provided synthetic FHIR context. "
+    "Return concise, non-diagnostic workflow support."
+)
+
+PROVIDER = os.getenv("LLM_PROVIDER", "fallback").lower()
+VERTEX_MODEL = os.getenv("GOOGLE_GENAI_MODEL", "gemini-2.5-flash")
+VERTEX_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+
 _client = None
 
 
 def get_openai_client():
     global _client
     api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
+    if not api_key or api_key.startswith("your_key"):
         return None
     if _client is None:
         from openai import OpenAI
@@ -76,45 +86,66 @@ def demo_fallback(cds_request: dict, reason: str) -> dict:
     }
 
 
+def _vertex_summary(patient_context: str) -> dict:
+    from google import genai
+
+    client = genai.Client(
+        vertexai=True,
+        project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+        location=VERTEX_LOCATION,
+    )
+    resp = client.models.generate_content(
+        model=VERTEX_MODEL,
+        contents=patient_context,
+        config={
+            "system_instruction": SYSTEM_PROMPT,
+            "temperature": 0.2,
+            "max_output_tokens": 512,
+        },
+    )
+    text = (resp.text or "").strip()
+    return {
+        "summary": "Open loops detected — review in Loop",
+        "detail": text,
+        "indicator": "info",
+    }
+
+
+def _openai_summary(patient_context: str) -> dict:
+    client = get_openai_client()
+    if client is None:
+        raise RuntimeError("OpenAI client unavailable")
+
+    response = client.responses.create(
+        model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+        input=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": patient_context},
+        ],
+        temperature=0.2,
+    )
+    text = response.output_text.strip()
+    return {
+        "summary": "Open loops detected — review in Loop",
+        "detail": text,
+        "indicator": "info",
+    }
+
+
 def call_ai_for_recommendation(cds_request: dict) -> dict:
     """
     Returns a simple dict that we will convert into a CDS Hooks card.
-    Works without an OpenAI key — returns a demo card instead.
+    Works without any LLM key — returns a demo card instead.
     """
-
-    client = get_openai_client()
-    if client is None:
-        return demo_fallback(cds_request, "no OPENAI_API_KEY configured")
 
     patient_context = build_patient_context(cds_request)
 
     try:
-        response = client.responses.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-            input=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a clinical workflow assistant for a hackathon prototype. "
-                        "Use only the provided synthetic FHIR context. "
-                        "Return concise, non-diagnostic workflow support."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": patient_context,
-                },
-            ],
-            temperature=0.2,
-        )
-
-        text = response.output_text.strip()
-
-        return {
-            "summary": "AI-generated workflow suggestion",
-            "detail": text,
-            "indicator": "info",
-        }
-
+        if PROVIDER == "vertex" and os.getenv("GOOGLE_CLOUD_PROJECT"):
+            return _vertex_summary(patient_context)
+        if PROVIDER == "openai" or get_openai_client():
+            return _openai_summary(patient_context)
     except Exception as error:
         return demo_fallback(cds_request, str(error))
+
+    return demo_fallback(cds_request, "no LLM configured — set LLM_PROVIDER=vertex or OPENAI_API_KEY")

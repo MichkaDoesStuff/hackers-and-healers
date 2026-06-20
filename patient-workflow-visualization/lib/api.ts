@@ -1,6 +1,7 @@
 import type { Patient } from "./types"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"
+/** Same-origin proxy via Next.js rewrites → Loop backend `/api/*`. */
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? ""
 
 export interface ClinicResponse {
   patients: Patient[]
@@ -18,4 +19,15 @@ export async function fetchClinic(): Promise<ClinicResponse> {
 export function launchPatient(): string | null {
   if (typeof window === "undefined") return null
   return new URLSearchParams(window.location.search).get("patient")
+}
+
+/** Draft clinician message for a loop via the Loop backend LLM. */
+export async function draftLoopMessage(loopId: string, prompt?: string): Promise<{ text: string; model: string }> {
+  const res = await fetch(`${API_BASE}/api/loops/${encodeURIComponent(loopId)}/draft`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(prompt ? { prompt } : {}),
+  })
+  if (!res.ok) throw new Error(`Draft failed: ${res.status}`)
+  return res.json()
 }

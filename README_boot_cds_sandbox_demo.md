@@ -266,66 +266,47 @@ CDS Hooks Sandbox
 
 ---
 
-## 11. Wire Loop frontend into CDS cards
+## 11. Wire Loop side panel (/embed) into CDS Sandbox
 
-The CDS card link now opens the Loop Next.js app at `/embed`, with patient context in the query string.
+The CDS card link opens the Loop Next.js app at `/embed` (side panel + workflow modals).
 
-You need **four terminals** for the full demo:
+### Recommended: one public URL (prototype2 / lohp pattern)
 
-```text
-Terminal 1: FastAPI backend (port 8000)
-Terminal 2: Cloudflare tunnel → backend
-Terminal 3: Next.js frontend (port 3000)
-Terminal 4: Cloudflare tunnel → frontend
-```
-
-### Start the frontend
-
-From the repo root:
-
-```bash
-cd patient-workflow-visualization
-npm install
-npm run dev
-```
-
-Test locally:
+Next.js proxies `/cds-services` and `/fhir` to the Python backend, so you only need **one tunnel**:
 
 ```text
-http://localhost:3000/embed
+Terminal 1: ./scripts/start-stack.sh   (backend :8000 + frontend :3000)
+Terminal 2: cloudflared tunnel --url http://localhost:3000
 ```
 
-### Expose the frontend publicly
+In [CDS Sandbox](https://sandbox.cds-hooks.org/) settings:
 
-In a fourth terminal:
-
-```bash
-cloudflared tunnel --url http://localhost:3000
+```text
+CDS Service Endpoint: https://YOUR-TUNNEL/cds-services
+FHIR Server:          https://YOUR-TUNNEL/fhir
 ```
 
-Copy the printed URL, e.g. `https://loop-demo.trycloudflare.com`.
-
-### Point the backend at the public frontend URL
-
-Add to `cds-ai-service/.env`:
+Set in `cds-ai-service/.env`:
 
 ```env
-LOOP_APP_URL=https://loop-demo.trycloudflare.com
+LOOP_APP_URL=https://YOUR-TUNNEL
 ```
 
-Restart the FastAPI server after changing `.env`.
+Card links become `https://YOUR-TUNNEL/embed?patientId=...` — the Loop side panel loads inside the sandbox.
 
-The backend builds card links like:
+### Using lohp.ryanbeland.dev with teammate backend
 
-```text
-https://loop-demo.trycloudflare.com/embed?patientId=...&hook=patient-view&source=cds-hooks
+If the full triage + FHIR backend runs on `:8000` and Next.js on `:3000`:
+
+1. Copy `patient-workflow-visualization/.env.example` → `.env.local` with `BACKEND_URL=http://localhost:8000`
+2. Point the Cloudflare tunnel at **Next.js (:3000)**, not the backend directly
+3. Teammate backend must set card links to `{LOOP_APP_URL}/embed?...` with `type: "absolute"` (not `/portal/review` or `type: "smart"`)
+
+### Verify locally
+
+```bash
+chmod +x scripts/start-stack.sh cds-ai-service/test-cds.sh
+./cds-ai-service/test-cds.sh http://localhost:3000 triage-assistant
 ```
 
-### Verify end-to-end
-
-1. Register the **backend** discovery URL in the sandbox (`https://backend-tunnel/cds-services`).
-2. Trigger Patient View — a CDS card should appear.
-3. Click **Open Loop assistant** on the card.
-4. The Loop side panel loads inside the sandbox (or in a new tab, depending on sandbox behavior).
-
-If the iframe is blank, confirm `LOOP_APP_URL` uses the **frontend** tunnel URL, not the backend URL.
+Open `http://localhost:3000/embed?patientId=b61008f3-84e2-8e3f-abd9-995a23133d57`
