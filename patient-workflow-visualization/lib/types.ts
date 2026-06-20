@@ -10,6 +10,10 @@ export type IssueCategory =
 
 export interface Issue {
   id: string
+  /** Backend loop id for draft/approve API — absent on sandbox-only samples */
+  loopId?: string
+  /** Backend loop_type for playbook lookup */
+  loopType?: string
   patientId: string
   patientName: string
   /** short headline, e.g. "Potassium 6.1 — critical, unreviewed" */

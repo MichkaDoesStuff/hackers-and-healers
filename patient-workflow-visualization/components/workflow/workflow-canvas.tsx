@@ -203,7 +203,7 @@ function NodeEditor({
       </Field>
 
       {isAi && (
-        <Field label="AI prompt (Claude)">
+        <Field label="AI prompt">
           <textarea
             className={`${INPUT} min-h-40 resize-y font-mono text-xs leading-relaxed`}
             value={d.prompt ?? ""}
