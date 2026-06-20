@@ -1,0 +1,127 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+/* loop clinical theme v1 */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-geist-sans), 'Geist Fallback';
+  --font-mono: var(--font-geist-mono), 'Geist Mono Fallback';
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* clinical severity scale */
+  --color-critical: var(--critical);
+  --color-critical-foreground: var(--critical-foreground);
+  --color-critical-surface: var(--critical-surface);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-surface: var(--warning-surface);
+  --color-healthy: var(--healthy);
+  --color-healthy-foreground: var(--healthy-foreground);
+  --color-healthy-surface: var(--healthy-surface);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+}
+
+:root {
+  color-scheme: dark;
+
+  --background: oklch(0.16 0.004 60);
+  --foreground: oklch(0.92 0.004 80);
+
+  --card: oklch(0.2 0.004 60);
+  --card-foreground: oklch(0.92 0.004 80);
+
+  --popover: oklch(0.21 0.004 60);
+  --popover-foreground: oklch(0.92 0.004 80);
+
+  --primary: oklch(0.92 0.004 80);
+  --primary-foreground: oklch(0.18 0.004 60);
+
+  --secondary: oklch(0.26 0.004 60);
+  --secondary-foreground: oklch(0.92 0.004 80);
+
+  --muted: oklch(0.24 0.004 60);
+  --muted-foreground: oklch(0.62 0.006 70);
+
+  --accent: oklch(0.28 0.005 60);
+  --accent-foreground: oklch(0.95 0.004 80);
+
+  --destructive: oklch(0.62 0.2 25);
+
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.55 0.13 25);
+
+  /* critical = red */
+  --critical: oklch(0.68 0.17 25);
+  --critical-foreground: oklch(0.86 0.1 30);
+  --critical-surface: oklch(0.35 0.1 25);
+
+  /* warning = amber */
+  --warning: oklch(0.78 0.13 80);
+  --warning-foreground: oklch(0.86 0.11 85);
+  --warning-surface: oklch(0.42 0.08 80);
+
+  /* healthy = green */
+  --healthy: oklch(0.74 0.14 150);
+  --healthy-foreground: oklch(0.82 0.12 150);
+  --healthy-surface: oklch(0.34 0.06 150);
+
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* React Flow theming */
+.react-flow {
+  --xy-background-color: transparent;
+  --xy-edge-stroke-default: oklch(0.5 0.01 60);
+  --xy-edge-stroke-selected-default: var(--primary);
+}
+.react-flow__attribution {
+  display: none;
+}
+.react-flow__handle {
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--background);
+  background: var(--muted-foreground);
+}
+.react-flow__edge-path {
+  stroke-width: 1.5;
+}
