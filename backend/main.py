@@ -584,7 +584,7 @@ def get_patient_condition_report(patient_id: str, condition_name: str):
     html += "</body></html>"
     return HTMLResponse(html)
 
-@app.get("/api/patients")
+@app.get("/api/inbox")
 
 def get_global_inbox():
     """

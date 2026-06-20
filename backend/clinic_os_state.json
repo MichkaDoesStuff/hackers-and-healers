@@ -27,6 +27,34 @@
       "patient_context": "System created a follow-up loop on order sign for Niacin 25 MG Oral Tablet.",
       "status": "ready",
       "created_at": "2026-06-20T17:11:42.031493"
+    },
+    "task-e29c18": {
+      "taskId": "task-e29c18",
+      "patientId": "0c3956ce-3d6e-51f6-4fd0-0dc37ce65cfd",
+      "fax_text": "Loop Scheduled: Nadolol 80 MG Oral Tablet Efficacy Follow-up",
+      "extraction": {
+        "patient_name": "Alyssa971 Nienow652",
+        "diagnosis": "Nadolol 80 MG Oral Tablet efficacy review",
+        "specialty": "Pharmacy",
+        "urgency": "Routine"
+      },
+      "patient_context": "System created a follow-up loop on order sign for Nadolol 80 MG Oral Tablet.",
+      "status": "ready",
+      "created_at": "2026-06-20T17:23:09.275388"
+    },
+    "task-1fbc94": {
+      "taskId": "task-1fbc94",
+      "patientId": "0c3956ce-3d6e-51f6-4fd0-0dc37ce65cfd",
+      "fax_text": "Loop Scheduled: Renal Function Check for the drafted imaging order",
+      "extraction": {
+        "patient_name": "Alyssa971 Nienow652",
+        "diagnosis": "the drafted imaging order Pre-authorization",
+        "specialty": "Radiology",
+        "urgency": "Routine"
+      },
+      "patient_context": "System created a PAMA AUC pre-authorization loop for the drafted imaging order.",
+      "status": "ready",
+      "created_at": "2026-06-20T17:23:09.450628"
     }
   },
   "ARCHIVED_TASKS": {
