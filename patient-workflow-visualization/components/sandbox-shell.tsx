@@ -54,7 +54,13 @@ export function SandboxShell({ publicOrigin }: SandboxShellProps) {
   const hidePanelHref = sandboxPageQuery(searchParams, { panel: "0" })
   const showPanelHref = sandboxPageQuery(searchParams, { panel: null })
 
-  const discoveryUrl = `${publicOrigin}/cds-services`
+  // Default to the hosted lohp CDS service (rich AI chart-review cards).
+  // Override: ?cds=local uses our own /cds-services; ?cds=<url> uses any custom one.
+  const cdsParam = searchParams.get("cds")
+  const discoveryUrl =
+    cdsParam === "local"
+      ? `${publicOrigin}/cds-services`
+      : cdsParam ?? "https://lohp.ryanbeland.dev/cds-services"
 
   const sandboxSrc = useMemo(() => {
     const q = new URLSearchParams({
