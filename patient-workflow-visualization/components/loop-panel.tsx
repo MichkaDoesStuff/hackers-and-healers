@@ -8,6 +8,7 @@ import { IssueCard } from "./issue-card"
 export function LoopPanel({
   issues,
   onOpen,
+  issueHref,
   scopedName,
   patientName,
   subtitle = "Ranked by urgency — clinician approves every action",
@@ -17,6 +18,8 @@ export function LoopPanel({
 }: {
   issues: Issue[]
   onOpen: (issue: Issue) => void
+  /** When set, issue rows navigate via link (works without JS hydration in iframe). */
+  issueHref?: (issue: Issue) => string
   scopedName?: string | null
   patientName?: string | null
   subtitle?: string
@@ -61,6 +64,7 @@ export function LoopPanel({
                   key={issue.id}
                   issue={issue}
                   onOpen={onOpen}
+                  href={issueHref?.(issue)}
                   compact
                   variant="list"
                 />
