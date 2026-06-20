@@ -108,7 +108,5 @@ Nothing here needs the internet to a real hospital. It all runs locally with fak
 ## 10. Where the docs live
 
 - `TEAM-GUIDE.md` — this file (start here).
-- `loop-user-story.md` — a day in the life of a doctor using Loop.
-- `loop-architecture.md` — the full technical design (read when you start building).
-- `loop-playbook-example.json` — an example playbook in our format.
-- `onboarding-notes.md` — what the clinicians told us on event day.
+- `docs/TEAMMATE_AGENT_HANDOFF.md` — **agent handoff**: merge strategy, architecture, pitfalls, scope cut.
+- `docs/NEXT_AGENT_SPEC.md` — prioritized implementation tasks for coding agents.
