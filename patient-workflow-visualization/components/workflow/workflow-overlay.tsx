@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { createPortal } from "react-dom"
+import { useEffect } from "react"
 import { X } from "lucide-react"
 import type { Issue } from "@/lib/types"
 import { severityDot, severityLabel } from "@/lib/severity"
@@ -17,10 +16,6 @@ export function WorkflowOverlay({
   onClose: () => void
   compact?: boolean
 }) {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => setMounted(true), [])
-
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose()
@@ -35,9 +30,9 @@ export function WorkflowOverlay({
     }
   }, [issue, onClose])
 
-  if (!issue || !mounted) return null
+  if (!issue) return null
 
-  const overlay = (
+  return (
     <div
       className={cn(
         "fixed inset-0 z-[9999] flex bg-black/20 backdrop-blur-[2px]",
@@ -87,6 +82,4 @@ export function WorkflowOverlay({
       </div>
     </div>
   )
-
-  return createPortal(overlay, document.body)
 }

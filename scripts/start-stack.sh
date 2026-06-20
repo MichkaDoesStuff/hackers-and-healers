@@ -37,8 +37,13 @@ echo "Starting CDS Hooks service on :8000 ..."
 (cd "$ROOT/cds-ai-service" && source .venv/bin/activate && set -a && source .env 2>/dev/null || true && set +a && uvicorn main:app --host 0.0.0.0 --port 8000) &
 CDS_PID=$!
 
-echo "Starting Next.js frontend on :3000 ..."
-(cd "$ROOT/patient-workflow-visualization" && npm run dev -- --port 3000) &
+if [[ "${LOOP_DEV:-0}" == "1" ]]; then
+  echo "Starting Next.js dev on :3000 (local only — do not tunnel) ..."
+  (cd "$ROOT/patient-workflow-visualization" && npm run dev -- --port 3000) &
+else
+  echo "Building + starting Next.js production on :3000 ..."
+  (cd "$ROOT/patient-workflow-visualization" && npm run build && npm run start -- --port 3000) &
+fi
 FRONTEND_PID=$!
 
 cleanup() {
@@ -65,6 +70,7 @@ echo "  Loop API:      http://localhost:8010/api/clinic"
 echo "  CDS discovery: http://localhost:3000/cds-services"
 echo ""
 echo "LLM: set LLM_PROVIDER=vertex + GOOGLE_CLOUD_PROJECT in cds-ai-service/.env and backend/.env"
-echo "Tunnel: cloudflared tunnel --url http://localhost:3000"
+echo "Tunnel:  ./scripts/tunnel.sh"
+echo "Dev UI:  LOOP_DEV=1 ./scripts/start-stack.sh"
 echo ""
 wait
