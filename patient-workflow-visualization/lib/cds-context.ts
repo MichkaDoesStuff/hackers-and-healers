@@ -8,6 +8,8 @@
 export interface CdsEmbedContext {
   patientId: string | null
   hook: string | null
+  /** e.g. sandbox-shell, ehr-demo — controls demo fallbacks */
+  source: string | null
 }
 
 /** Parse the embed context from URL query params (CDS Hooks / SMART launch style). */
@@ -15,7 +17,8 @@ export function parseCdsEmbedContext(params: Record<string, string>): CdsEmbedCo
   const patientId =
     params.patient ?? params.patientId ?? params.patient_id ?? null
   const hook = params.hook ?? params.hookType ?? null
-  return { patientId, hook }
+  const source = params.source ?? null
+  return { patientId, hook, source }
 }
 
 /** Render a patient id as a FHIR reference, e.g. "Patient/123". */

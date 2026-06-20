@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
-import { Lock, X } from "lucide-react"
+import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
+import { X } from "lucide-react"
 import type { Issue } from "@/lib/types"
 import { severityDot, severityLabel } from "@/lib/severity"
 import { cn } from "@/lib/utils"
-import { WorkflowCanvas } from "./workflow-canvas"
+import { WorkflowRunner } from "./workflow-runner"
 
 export function WorkflowOverlay({
   issue,
@@ -16,98 +17,76 @@ export function WorkflowOverlay({
   onClose: () => void
   compact?: boolean
 }) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose()
     }
-    if (issue) window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
+    if (issue) {
+      window.addEventListener("keydown", onKey)
+      document.body.style.overflow = "hidden"
+    }
+    return () => {
+      window.removeEventListener("keydown", onKey)
+      document.body.style.overflow = ""
+    }
   }, [issue, onClose])
 
-  if (!issue) return null
+  if (!issue || !mounted) return null
 
-  return (
+  const overlay = (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex bg-foreground/25 backdrop-blur-sm",
+        "fixed inset-0 z-[9999] flex bg-black/20 backdrop-blur-[2px]",
         compact ? "items-stretch p-0" : "items-center justify-center p-3 sm:p-6",
       )}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Workflow"
     >
       <div
         className={cn(
-          "flex h-full w-full flex-col overflow-hidden border border-border bg-background shadow-2xl",
-          compact ? "rounded-none" : "max-w-6xl rounded-2xl",
+          "flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl",
+          compact ? "rounded-none" : "max-h-[92vh] max-w-3xl rounded-2xl border border-slate-200",
         )}
       >
-        {/* simulated embedded SMART/CDS app chrome */}
-        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-3 py-2">
-          <Lock className="size-3 text-muted-foreground" />
-          <span className="truncate text-xs text-muted-foreground">
-            {compact ? "LoHop workflow" : `lohop.app/workflow/${issue.id}`}
-          </span>
-          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-            {issue.source}
-          </span>
-          <button
-            onClick={onClose}
-            className="ml-auto flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            aria-label="Close workflow"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        {/* issue context header */}
         <div
           className={cn(
-            "flex shrink-0 flex-wrap items-start justify-between gap-2 border-b border-border",
-            compact ? "px-3 py-2.5" : "gap-3 px-5 py-4",
+            "flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 bg-white",
+            compact ? "px-3 py-2.5" : "px-5 py-4",
           )}
         >
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
               <span className={cn("size-2 shrink-0 rounded-full", severityDot[issue.severity])} />
-              <h2 className={cn("font-semibold text-foreground", compact ? "text-base" : "text-lg")}>
+              <h2 className={cn("font-semibold text-slate-900", compact ? "text-base" : "text-lg")}>
                 {issue.title}
               </h2>
-              <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                 {severityLabel[issue.severity]}
               </span>
             </div>
-            <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              {issue.detail}
-            </p>
+            <p className="mt-1 line-clamp-2 text-sm text-slate-500">{issue.detail}</p>
           </div>
-          <div className="text-right text-xs text-muted-foreground">
-            <div className="font-medium text-foreground">{issue.patientName}</div>
-            <div>open {issue.ageDays}d</div>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            aria-label="Close workflow"
+          >
+            <X className="size-5" />
+          </button>
         </div>
 
-        {/* the react flow canvas */}
-        <div className="relative min-h-0 flex-1">
-          <WorkflowCanvas issue={issue} />
-        </div>
-
-        <div className={cn("flex shrink-0 items-center justify-between border-t border-border", compact ? "px-3 py-2" : "px-5 py-3")}>
-          {!compact && (
-            <p className="text-xs text-muted-foreground">
-              Drag to connect steps · use the palette to add steps · scroll to zoom
-            </p>
-          )}
-          <div className={cn("flex gap-2", compact && "ml-auto w-full justify-end")}>
-            <button
-              onClick={onClose}
-              className="rounded-lg border border-border px-3.5 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
-            >
-              Close
-            </button>
-            <button className="rounded-lg bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
-              Run workflow
-            </button>
-          </div>
+        <div className="min-h-0 flex-1">
+          <WorkflowRunner issue={issue} compact={compact} />
         </div>
       </div>
     </div>
   )
+
+  return createPortal(overlay, document.body)
 }

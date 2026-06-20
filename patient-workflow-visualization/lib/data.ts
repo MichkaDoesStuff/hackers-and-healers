@@ -15,15 +15,18 @@ export function topSeverity(patient: Patient): Severity | null {
   }, "routine")
 }
 
+/** Sort issues: critical first, then older loops within the same band. */
+export function sortIssues(issues: Issue[]): Issue[] {
+  return [...issues].sort((a, b) => {
+    const bySeverity = SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]
+    if (bySeverity !== 0) return bySeverity
+    return b.ageDays - a.ageDays
+  })
+}
+
 /** every open issue across all patients, ranked for the Loop panel */
 export function allIssuesRanked(patients: Patient[]): Issue[] {
-  return patients
-    .flatMap((p) => p.issues)
-    .sort((a, b) => {
-      const bySeverity = SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]
-      if (bySeverity !== 0) return bySeverity
-      return b.ageDays - a.ageDays
-    })
+  return sortIssues(patients.flatMap((p) => p.issues))
 }
 
 /** patients sorted: most severe first, healthy patients last */
@@ -49,7 +52,7 @@ function normalizePatientRef(ref: string): string {
 /** Issues for the Loop embed — sandbox samples, then live backend data. */
 export function issuesForEmbed(patients: Patient[], patientId?: string | null): Issue[] {
   const sandbox = sandboxIssuesForPatient(patientId)
-  if (sandbox?.length) return sandbox
+  if (sandbox?.length) return sortIssues(sandbox)
 
   const ranked = allIssuesRanked(patients)
   if (!patientId) return ranked

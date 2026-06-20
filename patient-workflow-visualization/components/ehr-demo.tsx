@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { ChevronRight } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { severityDot, severitySurface, severityText } from "@/lib/severity"
@@ -35,7 +35,6 @@ export function EhrDemo() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(true)
-  const closedAt = useRef(0)
 
   const embedSrc = useMemo(() => {
     if (embedUrl) return embedUrl
@@ -96,14 +95,11 @@ export function EhrDemo() {
 
   function openLoop(link?: string) {
     if (link) setEmbedUrl(link)
-    if (Date.now() - closedAt.current > 300) setPanelOpen(true)
+    setPanelOpen(true)
   }
 
   function togglePanel() {
-    setPanelOpen((open) => {
-      if (open) closedAt.current = Date.now()
-      return !open
-    })
+    setPanelOpen((open) => !open)
   }
 
   return (
@@ -122,17 +118,10 @@ export function EhrDemo() {
         </button>
       </header>
 
-      <div
-        className={cn(
-          "grid min-h-0 flex-1 transition-[grid-template-columns] duration-200 ease-out",
-          panelOpen
-            ? "grid-cols-[minmax(0,1fr)_minmax(280px,42%)]"
-            : "grid-cols-[minmax(0,1fr)]",
-        )}
-      >
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <main
           className={cn(
-            "min-h-0 min-w-0 overflow-y-auto",
+            "min-h-0 min-w-0 flex-1 overflow-y-auto",
             panelOpen && "border-r border-border",
           )}
         >
@@ -213,16 +202,19 @@ export function EhrDemo() {
           </div>
         </main>
 
-        {panelOpen && (
-          <aside className="min-h-0 min-w-0 border-l border-border bg-card shadow-[-4px_0_24px_-12px_rgba(0,0,0,0.08)]">
+        {panelOpen ? (
+          <div
+            className="h-full shrink-0 border-l border-border bg-card shadow-[-4px_0_24px_-12px_rgba(0,0,0,0.08)]"
+            style={{ width: "min(42%, 480px)" }}
+          >
             <iframe
               title="LoHop assistant"
               src={embedSrc}
               className="h-full w-full border-0"
               allow="clipboard-read; clipboard-write"
             />
-          </aside>
-        )}
+          </div>
+        ) : null}
       </div>
     </div>
   )

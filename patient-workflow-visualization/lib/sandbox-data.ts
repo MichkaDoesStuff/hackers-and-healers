@@ -1,11 +1,14 @@
 import type { Issue } from "./types"
 
+/** Default CDS Sandbox demo patient on lohp. */
+export const DEMO_SANDBOX_PATIENT = "b61008f3-84e2-8e3f-abd9-995a23133d57"
+
 /** CDS Sandbox + lohp.ryanbeland.dev test patients → sample open loops for demo. */
 const SANDBOX_ISSUES: Record<string, Issue[]> = {
-  "b61008f3-84e2-8e3f-abd9-995a23133d57": [
+  [DEMO_SANDBOX_PATIENT]: [
     {
       id: "sb-afton-a1c",
-      patientId: "b61008f3-84e2-8e3f-abd9-995a23133d57",
+      patientId: DEMO_SANDBOX_PATIENT,
       patientName: "Afton574 Greenholt190",
       title: "A1c overdue",
       summary: "Last result 14 months ago",
@@ -18,7 +21,7 @@ const SANDBOX_ISSUES: Record<string, Issue[]> = {
     },
     {
       id: "sb-afton-bp",
-      patientId: "b61008f3-84e2-8e3f-abd9-995a23133d57",
+      patientId: DEMO_SANDBOX_PATIENT,
       patientName: "Afton574 Greenholt190",
       title: "BP follow-up",
       summary: "Elevated reading, no recheck in 6 weeks",
@@ -31,7 +34,7 @@ const SANDBOX_ISSUES: Record<string, Issue[]> = {
     },
     {
       id: "sb-afton-ref",
-      patientId: "b61008f3-84e2-8e3f-abd9-995a23133d57",
+      patientId: DEMO_SANDBOX_PATIENT,
       patientName: "Afton574 Greenholt190",
       title: "Endocrinology referral",
       summary: "Sent 10 days ago — no reply",
@@ -52,4 +55,12 @@ export function sandboxIssuesForPatient(patientId: string | null | undefined): I
     if (id.toLowerCase() === key) return issues
   }
   return null
+}
+
+/** Demo loops for embed when FHIR/API is slow or patient id doesn't match our map. */
+export function demoIssuesForEmbed(patientId?: string | null): Issue[] {
+  const demo = SANDBOX_ISSUES[DEMO_SANDBOX_PATIENT] ?? []
+  if (!patientId) return demo
+  const pid = patientId.replace(/^Patient\//, "")
+  return demo.map((issue) => ({ ...issue, patientId: pid }))
 }
