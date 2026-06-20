@@ -35,7 +35,7 @@ function StepNodeImpl({ data, selected }: NodeProps) {
   return (
     <div
       className={cn(
-        "w-60 rounded-xl border bg-card px-3.5 py-3 shadow-lg transition-colors",
+        "w-60 cursor-pointer rounded-xl border bg-card px-3.5 py-3 shadow-lg transition-colors hover:border-ring/60",
         meta.ring,
         selected && "ring-2 ring-ring",
       )}
@@ -56,6 +56,11 @@ function StepNodeImpl({ data, selected }: NodeProps) {
       </div>
       <div className="mt-2 text-[15px] font-semibold leading-tight text-foreground">{d.title}</div>
       <div className="mt-1 text-xs leading-snug text-muted-foreground">{d.detail}</div>
+      {d.prompt && (
+        <div className="mt-2 flex items-center gap-1 text-[10px] font-medium text-ring">
+          <FileText className="size-3" /> AI prompt · click to edit
+        </div>
+      )}
       <Handle type="source" position={Position.Right} />
     </div>
   )

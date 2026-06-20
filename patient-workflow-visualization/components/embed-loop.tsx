@@ -1,10 +1,11 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Lock } from "lucide-react"
 import { useSearchParams } from "next/navigation"
-import type { Issue } from "@/lib/types"
+import type { Issue, Patient } from "@/lib/types"
 import { issuesForEmbed, patientForEmbed } from "@/lib/data"
+import { fetchClinic } from "@/lib/api"
 import { parseCdsEmbedContext, formatFhirPatientRef } from "@/lib/cds-context"
 import { LoopPanel } from "./loop-panel"
 import { WorkflowOverlay } from "./workflow/workflow-overlay"
@@ -16,9 +17,17 @@ export function EmbedLoop() {
     [searchParams],
   )
 
-  const issues = useMemo(() => issuesForEmbed(context.patientId), [context.patientId])
-  const patient = useMemo(() => patientForEmbed(context.patientId), [context.patientId])
+  const [patients, setPatients] = useState<Patient[]>([])
   const [openIssue, setOpenIssue] = useState<Issue | null>(null)
+
+  useEffect(() => {
+    fetchClinic()
+      .then((d) => setPatients(d.patients))
+      .catch(() => setPatients([]))
+  }, [])
+
+  const issues = useMemo(() => issuesForEmbed(patients, context.patientId), [patients, context.patientId])
+  const patient = useMemo(() => patientForEmbed(patients, context.patientId), [patients, context.patientId])
 
   const patientRef = formatFhirPatientRef(context.patientId)
   const showingDemoFallback = Boolean(context.patientId && !patient && issues.length > 0)
@@ -45,7 +54,7 @@ export function EmbedLoop() {
 
       {showingDemoFallback && (
         <p className="border-b border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
-          Sandbox patient is not mapped to demo data yet — showing sample open loops.
+          Sandbox patient is not mapped to live data yet — showing all open loops.
         </p>
       )}
 

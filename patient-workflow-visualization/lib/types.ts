@@ -56,4 +56,6 @@ export interface WorkflowStepData extends Record<string, unknown> {
   detail: string
   /** owner / actor responsible for this step */
   actor?: string
+  /** editable instruction for AI steps (draft/detect) — the prompt Claude runs */
+  prompt?: string
 }

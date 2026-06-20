@@ -1,48 +1,46 @@
-# Environments and Secrets
-.env
-.env.*
-.venv
+# Python
+.venv/
 venv/
 env/
-.vene
-
-# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
+.env
+.env.*
 
 # Distribution / packaging
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
 *.egg
-MANIFEST
 
-# VS Code / IDEs
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Loop runtime data (generated, not source)
+data/playbooks_store.json
+data/actioned.json
+data/ground_truth.json
+
+# scratch / screenshots
+shot-*.mjs
+screenshot.mjs
+shots/
+/tmp/
+
+# IDEs
 .vscode/
 .idea/
 *.swp
 
-# OS generated files
+# OS
 .DS_Store
 .DS_Store?
 ._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
+ehthumbs.db
