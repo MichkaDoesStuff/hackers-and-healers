@@ -22,7 +22,7 @@ export function LohopPanel({
           <span className="text-sm text-muted-foreground">{issues.length} open</span>
         </div>
         <p className="px-5 pb-4 text-sm text-muted-foreground">{subtitle}</p>
-        <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-5 pb-5">
+        <div className="flex flex-1 flex-col overflow-y-auto px-5 pb-5 paper-stack space-y-2">
           {issues.map((issue) => (
             <IssueCard key={issue.id} issue={issue} onOpen={onOpen} showPatient />
           ))}
