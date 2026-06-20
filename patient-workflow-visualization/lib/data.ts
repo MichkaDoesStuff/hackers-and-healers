@@ -249,3 +249,30 @@ export function patientsRanked(): Patient[] {
 export function findIssue(id: string): Issue | undefined {
   return patients.flatMap((p) => p.issues).find((i) => i.id === id)
 }
+
+function normalizePatientRef(ref: string): string {
+  return ref.replace(/^Patient\//, "").toLowerCase()
+}
+
+/** Issues for the Loop embed — filters by CDS patient context when possible. */
+export function issuesForEmbed(patientId?: string | null): Issue[] {
+  const ranked = allIssuesRanked()
+  if (!patientId) return ranked
+
+  const needle = normalizePatientRef(patientId)
+  const matched = ranked.filter((issue) => {
+    const hay = normalizePatientRef(issue.patientId)
+    return hay === needle || hay.includes(needle) || needle.includes(hay)
+  })
+
+  return matched.length > 0 ? matched : ranked
+}
+
+export function patientForEmbed(patientId?: string | null): Patient | undefined {
+  if (!patientId) return undefined
+  const needle = normalizePatientRef(patientId)
+  return patients.find((p) => {
+    const hay = normalizePatientRef(p.id)
+    return hay === needle || hay.includes(needle) || needle.includes(hay)
+  })
+}

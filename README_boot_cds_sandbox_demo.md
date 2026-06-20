@@ -257,8 +257,75 @@ Current flow:
 
 ```text
 CDS Hooks Sandbox
-→ Cloudflare public URL
+→ Cloudflare public URL (backend)
 → local FastAPI backend
 → AI service
 → CDS card displayed in sandbox
+→ card link opens Loop frontend (/embed) in iframe or new tab
 ```
+
+---
+
+## 11. Wire Loop frontend into CDS cards
+
+The CDS card link now opens the Loop Next.js app at `/embed`, with patient context in the query string.
+
+You need **four terminals** for the full demo:
+
+```text
+Terminal 1: FastAPI backend (port 8000)
+Terminal 2: Cloudflare tunnel → backend
+Terminal 3: Next.js frontend (port 3000)
+Terminal 4: Cloudflare tunnel → frontend
+```
+
+### Start the frontend
+
+From the repo root:
+
+```bash
+cd patient-workflow-visualization
+npm install
+npm run dev
+```
+
+Test locally:
+
+```text
+http://localhost:3000/embed
+```
+
+### Expose the frontend publicly
+
+In a fourth terminal:
+
+```bash
+cloudflared tunnel --url http://localhost:3000
+```
+
+Copy the printed URL, e.g. `https://loop-demo.trycloudflare.com`.
+
+### Point the backend at the public frontend URL
+
+Add to `cds-ai-service/.env`:
+
+```env
+LOOP_APP_URL=https://loop-demo.trycloudflare.com
+```
+
+Restart the FastAPI server after changing `.env`.
+
+The backend builds card links like:
+
+```text
+https://loop-demo.trycloudflare.com/embed?patientId=...&hook=patient-view&source=cds-hooks
+```
+
+### Verify end-to-end
+
+1. Register the **backend** discovery URL in the sandbox (`https://backend-tunnel/cds-services`).
+2. Trigger Patient View — a CDS card should appear.
+3. Click **Open Loop assistant** on the card.
+4. The Loop side panel loads inside the sandbox (or in a new tab, depending on sandbox behavior).
+
+If the iframe is blank, confirm `LOOP_APP_URL` uses the **frontend** tunnel URL, not the backend URL.
