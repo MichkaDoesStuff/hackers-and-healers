@@ -218,7 +218,14 @@ async def handle_action(request: Request):
     """
     data = await request.json()
     action = data.get("action")
+    task_id = data.get("taskId")
     print(f"Received action: {action} with data: {data}")
+    
+    if action == "approve_referral" and task_id in TASKS:
+        # Remove from our pending tasks so it disappears from the global inbox
+        del TASKS[task_id]
+        print(f"[DEBUG] Task {task_id} approved and removed from memory.")
+        
     return {"status": "success", "message": "Action processed and saved to EHR."}
 
 @app.get("/api/tasks/{task_id}")

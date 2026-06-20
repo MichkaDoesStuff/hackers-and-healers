@@ -7,7 +7,9 @@ export default function ReviewPortal() {
   const { patientId, taskId } = useParams();
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isEditing, setIsEditing] = React.useState(false);
   const [taskData, setTaskData] = React.useState(null);
+  const [editedExtraction, setEditedExtraction] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -17,6 +19,7 @@ export default function ReviewPortal() {
         if (res.ok) {
           const data = await res.json();
           setTaskData(data);
+          setEditedExtraction(data.extraction || {});
         }
       } catch (err) {
         console.error("Failed to load task:", err);
@@ -27,13 +30,31 @@ export default function ReviewPortal() {
     fetchTask();
   }, [taskId]);
 
+  const getUrgencyStyles = (urgency) => {
+    const val = String(urgency || '').toLowerCase();
+    if (val.includes('stat') || val.includes('critical')) {
+      return { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', dot: 'bg-red-500 animate-pulse' };
+    } else if (val.includes('urgent')) {
+      return { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', dot: 'bg-orange-500' };
+    } else if (val.includes('elevated') || val.includes('moderate')) {
+      return { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700', dot: 'bg-yellow-500' };
+    }
+    // Default / Routine
+    return { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', dot: 'bg-blue-500' };
+  };
+
   const handleApprove = async () => {
     setIsSaving(true);
     try {
       await fetch('/api/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'approve_referral', taskId: taskId, patientId: patientId })
+        body: JSON.stringify({ 
+          action: 'approve_referral', 
+          taskId: taskId, 
+          patientId: patientId,
+          extraction: editedExtraction 
+        })
       });
       alert('Referral Approved and Saved to EMR!');
       navigate('/');
@@ -62,9 +83,14 @@ export default function ReviewPortal() {
           </div>
         </div>
         <div className="flex space-x-3">
-          <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+          <button 
+            onClick={() => setIsEditing(!isEditing)}
+            className={`px-4 py-2 border rounded-md font-medium flex items-center gap-2 transition-colors ${
+              isEditing ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+            }`}
+          >
             <Edit3 className="w-4 h-4" />
-            Edit
+            {isEditing ? 'Cancel Edit' : 'Edit'}
           </button>
           <button 
             onClick={handleApprove}
@@ -127,35 +153,67 @@ export default function ReviewPortal() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Patient Name</label>
-                <div className="bg-gray-50 px-3 py-2 border rounded-md font-medium text-gray-900">
-                  {loading ? "..." : taskData?.extraction?.patient_name}
-                </div>
+                {isEditing ? (
+                  <input 
+                    type="text"
+                    className="w-full bg-white px-3 py-2 border border-blue-300 rounded-md font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editedExtraction?.patient_name || ''}
+                    onChange={(e) => setEditedExtraction({...editedExtraction, patient_name: e.target.value})}
+                  />
+                ) : (
+                  <div className="bg-gray-50 px-3 py-2 border rounded-md font-medium text-gray-900">
+                    {loading ? "..." : editedExtraction?.patient_name}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Specialist</label>
-                <div className="bg-gray-50 px-3 py-2 border border-blue-200 bg-blue-50/50 rounded-md font-medium text-gray-900 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                  {loading ? "..." : taskData?.extraction?.specialist}
-                </div>
+                {isEditing ? (
+                  <input 
+                    type="text"
+                    className="w-full bg-white px-3 py-2 border border-blue-300 rounded-md font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editedExtraction?.specialist || ''}
+                    onChange={(e) => setEditedExtraction({...editedExtraction, specialist: e.target.value})}
+                  />
+                ) : (
+                  <div className="bg-gray-50 px-3 py-2 border border-blue-200 bg-blue-50/50 rounded-md font-medium text-gray-900 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    {loading ? "..." : editedExtraction?.specialist}
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Urgency</label>
-                <div className="bg-red-50 px-3 py-2 border border-red-200 rounded-md font-bold text-red-700 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                  {loading ? "..." : taskData?.extraction?.urgency}
-                </div>
+                {isEditing ? (
+                  <select 
+                    className="w-full bg-white px-3 py-2 border border-blue-300 rounded-md font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editedExtraction?.urgency || 'Routine'}
+                    onChange={(e) => setEditedExtraction({...editedExtraction, urgency: e.target.value})}
+                  >
+                    <option value="Routine">Routine</option>
+                    <option value="Elevated">Elevated</option>
+                    <option value="Urgent">Urgent</option>
+                    <option value="Stat">Stat</option>
+                  </select>
+                ) : (
+                  <div className={`px-3 py-2 border rounded-md font-bold flex items-center gap-2 ${getUrgencyStyles(editedExtraction?.urgency).bg} ${getUrgencyStyles(editedExtraction?.urgency).border} ${getUrgencyStyles(editedExtraction?.urgency).text}`}>
+                    <div className={`w-2 h-2 rounded-full ${getUrgencyStyles(editedExtraction?.urgency).dot}`}></div>
+                    {loading ? "..." : editedExtraction?.urgency}
+                  </div>
+                )}
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Clinical Reason for Referral / Diagnosis</label>
               <textarea 
-                readOnly
-                className="w-full bg-gray-50 px-3 py-2 border rounded-md text-gray-900 min-h-[100px] resize-none"
-                value={loading ? "..." : taskData?.extraction?.diagnosis}
+                readOnly={!isEditing}
+                className={`w-full px-3 py-2 border rounded-md text-gray-900 min-h-[100px] resize-none ${isEditing ? 'bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500' : 'bg-gray-50'}`}
+                value={loading ? "..." : (editedExtraction?.diagnosis || '')}
+                onChange={(e) => isEditing && setEditedExtraction({...editedExtraction, diagnosis: e.target.value})}
               />
             </div>
 
