@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Loop + CDS Hooks Sandbox",
+  title: "LoHop + CDS Sandbox",
 }
 
 export default function SandboxLayout({ children }: { children: React.ReactNode }) {

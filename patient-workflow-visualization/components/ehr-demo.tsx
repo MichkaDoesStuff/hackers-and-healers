@@ -1,10 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { ChevronRight, Lock, Stethoscope } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { ChevronRight } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { severityDot, severitySurface, severityText } from "@/lib/severity"
 import { cn } from "@/lib/utils"
+import { LohopMark } from "./lohop-mark"
 
 interface CdsCard {
   summary: string
@@ -34,6 +35,7 @@ export function EhrDemo() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(true)
+  const closedAt = useRef(0)
 
   const embedSrc = useMemo(() => {
     if (embedUrl) return embedUrl
@@ -94,32 +96,44 @@ export function EhrDemo() {
 
   function openLoop(link?: string) {
     if (link) setEmbedUrl(link)
-    setPanelOpen(true)
+    if (Date.now() - closedAt.current > 300) setPanelOpen(true)
+  }
+
+  function togglePanel() {
+    setPanelOpen((open) => {
+      if (open) closedAt.current = Date.now()
+      return !open
+    })
   }
 
   return (
     <div className="flex h-dvh flex-col bg-background">
-      <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-2.5">
-        <Stethoscope className="size-4 text-muted-foreground" />
+      <header className="relative z-10 flex shrink-0 items-center gap-3 border-b border-border bg-white px-4 py-2">
+        <LohopMark size="sm" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground">ClinicOS — Patient Chart (demo)</p>
-          <p className="text-xs text-muted-foreground">
-            CDS Hooks patient-view · Loop embedded in side panel
-          </p>
+          <p className="text-xs text-muted-foreground">Patient chart demo · CDS Hooks patient-view</p>
         </div>
         <button
-          onClick={() => setPanelOpen((v) => !v)}
-          className="rounded-lg border border-border px-3 py-1.5 text-xs text-foreground hover:bg-accent"
+          type="button"
+          onClick={togglePanel}
+          className="rounded-md border border-border px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-accent"
         >
-          {panelOpen ? "Hide Loop" : "Show Loop"}
+          {panelOpen ? "Hide panel" : "Show panel"}
         </button>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div
+        className={cn(
+          "grid min-h-0 flex-1 transition-[grid-template-columns] duration-200 ease-out",
+          panelOpen
+            ? "grid-cols-[minmax(0,1fr)_minmax(280px,42%)]"
+            : "grid-cols-[minmax(0,1fr)]",
+        )}
+      >
         <main
           className={cn(
-            "flex min-w-0 flex-col overflow-y-auto border-r border-border transition-[width] duration-200",
-            panelOpen ? "w-[42%] min-w-[320px]" : "w-full",
+            "min-h-0 min-w-0 overflow-y-auto",
+            panelOpen && "border-r border-border",
           )}
         >
           <div className="border-b border-border px-5 py-4">
@@ -200,13 +214,9 @@ export function EhrDemo() {
         </main>
 
         {panelOpen && (
-          <aside className="flex min-w-0 flex-1 flex-col bg-background">
-            <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-3 py-2">
-              <Lock className="size-3 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">Loop · embedded side panel (iframe)</p>
-            </div>
+          <aside className="min-h-0 min-w-0 border-l border-border bg-card shadow-[-4px_0_24px_-12px_rgba(0,0,0,0.08)]">
             <iframe
-              title="Loop assistant"
+              title="LoHop assistant"
               src={embedSrc}
               className="h-full w-full border-0"
               allow="clipboard-read; clipboard-write"

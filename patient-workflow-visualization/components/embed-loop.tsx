@@ -1,13 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Lock } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import type { Issue, Patient } from "@/lib/types"
 import { issuesForEmbed, patientForEmbed } from "@/lib/data"
 import { fetchClinic } from "@/lib/api"
 import { sandboxIssuesForPatient } from "@/lib/sandbox-data"
-import { parseCdsEmbedContext, formatFhirPatientRef } from "@/lib/cds-context"
+import { parseCdsEmbedContext } from "@/lib/cds-context"
 import { LoopPanel } from "./loop-panel"
 import { WorkflowOverlay } from "./workflow/workflow-overlay"
 
@@ -26,27 +25,39 @@ export function EmbedLoop() {
   )
 
   const [patients, setPatients] = useState<Patient[]>([])
+  const [loading, setLoading] = useState(true)
   const [openIssue, setOpenIssue] = useState<Issue | null>(null)
   const [fhirName, setFhirName] = useState<string | null>(null)
 
-  const isSandboxPatient = Boolean(sandboxIssuesForPatient(context.patientId))
+  const sandboxIssues = useMemo(
+    () => sandboxIssuesForPatient(context.patientId),
+    [context.patientId],
+  )
+  const isSandboxPatient = Boolean(sandboxIssues?.length)
+
   const demoPatient = useMemo(
     () => patientForEmbed(patients, context.patientId),
     [patients, context.patientId],
   )
-  const issues = useMemo(
-    () => issuesForEmbed(patients, context.patientId),
-    [patients, context.patientId],
-  )
+  const issues = useMemo(() => {
+    if (sandboxIssues?.length) return sandboxIssues
+    return issuesForEmbed(patients, context.patientId)
+  }, [sandboxIssues, patients, context.patientId])
 
   useEffect(() => {
+    if (isSandboxPatient) {
+      setLoading(false)
+      return
+    }
+    setLoading(true)
     fetchClinic()
       .then((d) => setPatients(d.patients))
       .catch(() => setPatients([]))
-  }, [])
+      .finally(() => setLoading(false))
+  }, [isSandboxPatient])
 
   useEffect(() => {
-    if (!context.patientId || demoPatient || isSandboxPatient) return
+    if (!context.patientId || isSandboxPatient) return
     const id = context.patientId.replace(/^Patient\//, "")
     fetch(`/fhir/Patient/${id}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -54,51 +65,26 @@ export function EmbedLoop() {
         if (p?.resourceType === "Patient") setFhirName(fhirPatientName(p))
       })
       .catch(() => {})
-  }, [context.patientId, demoPatient, isSandboxPatient])
+  }, [context.patientId, isSandboxPatient])
 
-  const patientRef = formatFhirPatientRef(context.patientId)
   const displayName =
-    demoPatient?.name ?? fhirName ?? issues[0]?.patientName ?? null
-  const showingDemoFallback = Boolean(
-    context.patientId && !demoPatient && !isSandboxPatient && issues.length > 0,
-  )
+    sandboxIssues?.[0]?.patientName ??
+    demoPatient?.name ??
+    fhirName ??
+    issues[0]?.patientName ??
+    null
 
   return (
-    <div className="flex h-dvh flex-col bg-background">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-3 py-2">
-        <Lock className="size-3 shrink-0 text-muted-foreground" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-medium text-foreground">Loop</p>
-          {displayName ? (
-            <p className="truncate text-[11px] text-muted-foreground">{displayName}</p>
-          ) : patientRef ? (
-            <p className="truncate text-[11px] text-muted-foreground">{patientRef}</p>
-          ) : null}
-        </div>
-        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-          {context.hook ?? "patient-view"}
-        </span>
-      </div>
-
-      {showingDemoFallback && (
-        <p className="shrink-0 border-b border-border bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground">
-          Sample open loops — connect FHIR backend for live detection.
-        </p>
-      )}
-
-      <div className="min-h-0 flex-1">
-        <LoopPanel
-          issues={issues}
-          onOpen={setOpenIssue}
-          compact
-          subtitle={
-            displayName
-              ? `Open loops for ${displayName}`
-              : "Ranked open loops from your chart session"
-          }
-          className="h-full w-full border-l-0"
-        />
-      </div>
+    <div className="flex h-dvh flex-col bg-card">
+      <LoopPanel
+        issues={issues}
+        onOpen={setOpenIssue}
+        compact
+        loading={loading && !isSandboxPatient}
+        patientName={displayName}
+        subtitle="Open loops ranked for clinician review"
+        className="h-full w-full"
+      />
 
       <WorkflowOverlay
         issue={openIssue}

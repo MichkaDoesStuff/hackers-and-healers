@@ -10,9 +10,18 @@ export interface ClinicResponse {
 
 /** Live clinic data (patients + issues) from the Loop backend, detected on FHIR. */
 export async function fetchClinic(): Promise<ClinicResponse> {
-  const res = await fetch(`${API_BASE}/api/clinic`, { cache: "no-store" })
-  if (!res.ok) throw new Error(`Clinic load failed: ${res.status}`)
-  return res.json()
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 12_000)
+  try {
+    const res = await fetch(`${API_BASE}/api/clinic`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+    if (!res.ok) throw new Error(`Clinic load failed: ${res.status}`)
+    return res.json()
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 /** SMART launch patient context, if the EMR launched us in a chart. */

@@ -39,7 +39,7 @@ export function EmbedBridge() {
 
   return (
     <div className="flex h-dvh items-center justify-center bg-background text-sm text-muted-foreground">
-      Opening Loop in the side panel…
+      Opening LoHop…
     </div>
   )
 }

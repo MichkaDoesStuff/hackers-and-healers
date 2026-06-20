@@ -10,8 +10,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Loop — ClinicOS',
-  description: 'Surface and resolve the clinical loops that fall through the cracks.',
+  title: 'LoHop — Human in the loop',
+  description: 'Surface open clinical loops and resolve them with clinician approval.',
   generator: 'v0.app',
   icons: {
     icon: [

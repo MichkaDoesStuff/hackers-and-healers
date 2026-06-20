@@ -43,7 +43,7 @@ export function WorkflowOverlay({
         <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-3 py-2">
           <Lock className="size-3 text-muted-foreground" />
           <span className="truncate text-xs text-muted-foreground">
-            {compact ? "Workflow" : `loop.app/workflow/${issue.id} · embedded in ClinicOS`}
+            {compact ? "LoHop workflow" : `lohop.app/workflow/${issue.id}`}
           </span>
           <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
             {issue.source}
