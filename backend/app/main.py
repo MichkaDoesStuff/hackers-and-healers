@@ -5,7 +5,7 @@ from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import llm
+from . import llm, triage
 from .clinic import build_clinic
 from .config import CORS_ORIGINS
 from .detectors import detect_all
@@ -162,3 +162,37 @@ def approve_loop(loop_id: str, req: ApproveReq = Body(default=ApproveReq())):
     result = write_action(fhir, loop, message, req.approver)
     closed = find_loop(fhir, loop_id) is None
     return {**result, "loop_id": loop_id, "closed": closed, "model": model, "message": message}
+
+
+# ------------------------------ fax triage --------------------------------- #
+# Unstructured incoming fax -> LLM-extracted structured referral -> clinician
+# review -> approve writes a real FHIR ServiceRequest + Provenance.
+@app.post("/api/triage/scan")
+def triage_scan(patient: str | None = None):
+    """Simulate receiving a referral fax (for a patient, or auto-pick one), extract it."""
+    task = triage.scan_patient(get_fhir(), patient)
+    if not task:
+        raise HTTPException(status_code=404, detail="no patient available to scan")
+    return task
+
+
+@app.get("/api/triage/tasks")
+def triage_tasks():
+    return {"tasks": triage.list_tasks()}
+
+
+@app.get("/api/triage/tasks/{task_id}")
+def triage_task(task_id: str):
+    task = triage.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="task not found")
+    return task
+
+
+@app.post("/api/triage/tasks/{task_id}/approve")
+def triage_approve(task_id: str, req: ApproveReq = Body(default=ApproveReq())):
+    """Approve the extracted referral: write ServiceRequest + Provenance to FHIR."""
+    result = triage.approve(get_fhir(), task_id, req.approver)
+    if not result:
+        raise HTTPException(status_code=404, detail="task not found")
+    return result

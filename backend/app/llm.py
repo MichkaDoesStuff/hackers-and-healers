@@ -7,7 +7,9 @@ writes to FHIR, never bypasses a gate.
 """
 from __future__ import annotations
 
+import json
 import os
+import re
 
 PROVIDER = os.getenv("LLM_PROVIDER", "fallback").lower()
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
@@ -94,3 +96,128 @@ def _fallback(context: str, note: str | None = None) -> dict:
     if note:
         text += f"\n[{note}]"
     return {"text": text, "model": "fallback"}
+
+
+# --------------------------- structured extraction ------------------------- #
+# Fax triage: pull structured referral fields out of unstructured fax text.
+# Same provider rules as draft(); the LLM only reads language into fields.
+EXTRACT_SYSTEM = (
+    "You extract structured referral data from a clinical fax or note. "
+    "Reply with ONLY a JSON object — no prose, no code fences."
+)
+
+_SPECIALTIES = ["Cardiology", "Nephrology", "Endocrinology", "Neurology",
+                "Respirology", "Oncology", "Gastroenterology", "Rheumatology"]
+_URGENCIES = {"emergent", "urgent", "routine"}
+
+
+def _chat(system: str, user: str, max_tokens: int = 400) -> dict | None:
+    """One-shot completion via the configured provider. None if no provider/key set."""
+    if PROVIDER == "vertex" and os.getenv("GOOGLE_CLOUD_PROJECT"):
+        from google import genai
+
+        client = genai.Client(
+            vertexai=True,
+            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+            location=VERTEX_LOCATION,
+        )
+        resp = client.models.generate_content(
+            model=VERTEX_MODEL,
+            contents=user,
+            config={"system_instruction": system, "temperature": 0.1,
+                    "max_output_tokens": max_tokens},
+        )
+        return {"text": (resp.text or "").strip(), "model": VERTEX_MODEL}
+    if PROVIDER == "anthropic" and os.getenv("ANTHROPIC_API_KEY"):
+        import anthropic
+
+        client = anthropic.Anthropic()
+        msg = client.messages.create(
+            model=ANTHROPIC_MODEL, max_tokens=max_tokens, system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+        text = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
+        return {"text": text, "model": ANTHROPIC_MODEL}
+    if PROVIDER == "openai" and os.getenv("OPENAI_API_KEY"):
+        from openai import OpenAI
+
+        client = OpenAI()
+        resp = client.chat.completions.create(
+            model=OPENAI_MODEL, max_tokens=max_tokens,
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": user}],
+        )
+        return {"text": resp.choices[0].message.content.strip(), "model": OPENAI_MODEL}
+    return None
+
+
+def extract_referral(text: str) -> dict:
+    """Extract {patient_name, diagnosis, specialist, urgency} from fax text.
+
+    Uses the configured LLM if available; otherwise a deterministic regex parse so the
+    feature works offline. Never raises — always returns those four keys plus `model`.
+    """
+    user = (
+        "Extract these fields from the referral fax below and return ONLY JSON with "
+        "exactly these keys: patient_name, diagnosis, specialist, urgency "
+        "(urgency must be one of: routine, urgent, emergent).\n\nFax:\n" + text
+    )
+    try:
+        res = _chat(EXTRACT_SYSTEM, user, max_tokens=300)
+        if res:
+            data = _parse_json_obj(res["text"])
+            if data:
+                return {**_normalize_extract(data), "model": res["model"]}
+    except Exception:  # any SDK/parse error -> deterministic fallback
+        pass
+    return {**_regex_extract(text), "model": "fallback"}
+
+
+def _parse_json_obj(raw: str) -> dict | None:
+    s = raw.strip()
+    if s.startswith("```"):
+        s = s.strip("`")
+    start, end = s.find("{"), s.rfind("}")
+    if start == -1 or end == -1:
+        return None
+    try:
+        obj = json.loads(s[start:end + 1])
+        return obj if isinstance(obj, dict) else None
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
+def _normalize_extract(data: dict) -> dict:
+    urg = str(data.get("urgency", "routine")).lower().strip()
+    return {
+        "patient_name": str(data.get("patient_name") or "Unknown").strip(),
+        "diagnosis": str(data.get("diagnosis") or "Not stated").strip(),
+        "specialist": str(data.get("specialist") or "Internal Medicine").strip(),
+        "urgency": urg if urg in _URGENCIES else "routine",
+    }
+
+
+def _regex_extract(text: str) -> dict:
+    name = "Unknown"
+    m = re.search(r"(?:Re|Patient)\s*:?\s*([A-Z][a-z]+ [A-Z][a-z]+)", text)
+    if not m:
+        m = re.search(r"for\s+([A-Z][a-z]+ [A-Z][a-z]+)", text)
+    if m:
+        name = m.group(1).strip()
+    low = text.lower()
+    specialist = "Internal Medicine"
+    for s in _SPECIALTIES:
+        if s.lower() in low:
+            specialist = s
+            break
+    urgency = "routine"
+    if "emergent" in low or "emergency" in low:
+        urgency = "emergent"
+    elif "urgent" in low or "urgently" in low:
+        urgency = "urgent"
+    diagnosis = "See referral letter"
+    m = re.search(r"history of ([^.\n]+)", text)
+    if m:
+        diagnosis = m.group(1).strip()[:200]
+    return {"patient_name": name, "diagnosis": diagnosis,
+            "specialist": specialist, "urgency": urgency}
