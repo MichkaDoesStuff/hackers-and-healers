@@ -1,9 +1,22 @@
 import os
-from openai import OpenAI
 
 from dotenv import load_dotenv
+
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+_client = None
+
+
+def get_openai_client():
+    global _client
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None
+    if _client is None:
+        from openai import OpenAI
+
+        _client = OpenAI(api_key=api_key)
+    return _client
 
 
 def build_patient_context(cds_request: dict) -> str:
@@ -50,11 +63,28 @@ Keep output short and action-oriented.
 """
 
 
+def demo_fallback(cds_request: dict, reason: str) -> dict:
+    patient_id = cds_request.get("context", {}).get("patientId", "this patient")
+    return {
+        "summary": "Open loops detected — review in Loop",
+        "detail": (
+            f"Loop found follow-up items for {patient_id}. "
+            "Open the assistant to review ranked issues and run a workflow. "
+            f"({reason})"
+        ),
+        "indicator": "info",
+    }
+
+
 def call_ai_for_recommendation(cds_request: dict) -> dict:
     """
     Returns a simple dict that we will convert into a CDS Hooks card.
-    Includes a fallback so your demo still works if the AI call fails.
+    Works without an OpenAI key — returns a demo card instead.
     """
+
+    client = get_openai_client()
+    if client is None:
+        return demo_fallback(cds_request, "no OPENAI_API_KEY configured")
 
     patient_context = build_patient_context(cds_request)
 
@@ -87,12 +117,4 @@ def call_ai_for_recommendation(cds_request: dict) -> dict:
         }
 
     except Exception as error:
-        return {
-            "summary": "AI service unavailable — demo fallback",
-            "detail": (
-                "The AI API call failed, so this fallback card is shown. "
-                "In a live demo, this confirms that the CDS Hooks flow still works. "
-                f"Error: {str(error)}"
-            ),
-            "indicator": "warning",
-        }
+        return demo_fallback(cds_request, str(error))
