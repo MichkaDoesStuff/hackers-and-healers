@@ -1,0 +1,119 @@
+Data and tools for prototyping
+All prototyping at this event must use synthetic or de-identified data. No real patient data, no live
+EMR connections. The following open-access resources can help you build realistic prototypes
+without any privacy risk. You do not need to use all of these — pick what fits your concept.
+
+Synthetic patient records
+Synthea — Synthetic Patient Population Simulator
+Synthea is an open-source tool from MITRE that generates realistic (but entirely fictional)
+patient records, including conditions, encounters, medications, observations, care plans, and
+procedures. It models disease progression over a patient’s lifetime using real-world statistics
+from the CDC and NIH. Records export in HL7 FHIR (R4), C-CDA, and CSV formats. You can
+generate a handful of patients or a million. Pre-built datasets of 100 and 1,000 patients are
+available for immediate download, and bulk datasets of one million records are also available.
+• Website: https://synthetichealth.github.io/synthea/
+• GitHub: https://github.com/synthetichealth/synthea
+• Pre-built downloads (FHIR R4, C-CDA, CSV): https://synthea.mitre.org/downloads
+• Best for: any prototype that needs patient timelines, encounter histories, medication lists,
+lab results, or care plans
+
+De-identified clinical data
+MIMIC-IV — Medical Information Mart for Intensive Care
+MIMIC-IV is a large, freely accessible de-identified dataset from Beth Israel Deaconess Medical
+Center covering over a decade of hospital admissions (2008–2019). It includes patient
+measurements, orders, diagnoses, procedures, treatments, and de-identified clinical notes.
+While it is hospital- and ICU-focused rather than primary care, it is useful for prototypes
+involving medication reconciliation, discharge summaries, lab result interpretation, or clinical
+note processing. Access requires free credentialing through PhysioNet. A 100-patient demo
+subset is available without credentialing for workshops and rapid prototyping.
+• Full dataset (requires credentialing): https://physionet.org/content/mimiciv/
+• 100-patient demo (open access): https://physionet.org/content/mimic-iv-demo/
+• Best for: clinical notes, medication data, lab values, discharge workflows
+MTSamples — Medical Transcription Samples
+A public-domain collection of over 5,000 sample medical transcription reports across 40
+specialties, including general medicine, office notes, SOAP/chart/progress notes, and
+
+AI in Healthcare Co-Design Event | Developer Guide
+
+University of Ottawa DFM | TOH DFP | Bruyere Health Innovation | AGI Ventures Canada
+consult/history-and-physical reports. These are realistic clinical narratives, not structured data,
+making them useful for prototypes that process, summarize, or extract information from clinical
+text.
+• Website: https://mtsamples.com/
+• Kaggle download (CSV):
+https://www.kaggle.com/datasets/tboyle10/medicaltranscriptions
+• Best for: clinical note summarization, NLP on medical text, inbox triage prototypes,
+documentation support tools
+
+Canadian health reference data
+Health Canada Drug Product Database (DPD)
+The DPD contains product-specific information on all drugs approved for use in Canada,
+including brand names, drug identification numbers (DINs), active ingredients, routes of
+administration, pharmaceutical forms, therapeutic classifications, and company information. The
+data extract is available as CSV files and is updated regularly. Useful for any prototype involving
+prescribing, medication lookups, or drug information.
+
+• Data extract: https://www.canada.ca/en/health-canada/services/drugs-health-
+products/drug-products/drug-product-database/what-data-extract-drug-product-
+database.html
+
+• Open data portal: https://open.canada.ca/data/en/dataset/bf55e42a-63cb-4556-bfd8-
+44f26e5a36fe
+• Best for: medication-related prototypes, drug interaction lookups, prescribing support
+tools
+
+Canadian Clinical Drug Data Set (CCDD)
+The CCDD is a standardized drug terminology and coding system designed for use in electronic
+prescribing, EMR systems, and medication reconciliation. It provides standardized drug names,
+codes, and special groupings (e.g., controlled substances) aligned with international terminology
+standards. It complements the DPD with a structure designed for interoperability across digital
+health systems.
+• Open data portal: https://open.canada.ca/data/en/dataset/3e0a7b9e-a5e9-4131-bde4-
+ac685a1f1a38
+• Best for: structured medication data for electronic prescribing or medication
+reconciliation prototypes
+
+AI in Healthcare Co-Design Event | Developer Guide
+
+University of Ottawa DFM | TOH DFP | Bruyere Health Innovation | AGI Ventures Canada
+FHIR test servers and sandboxes
+If your prototype involves querying or writing structured health data, these open FHIR servers let
+you test against realistic APIs without any setup or credentialing.
+Server URL Notes
+HAPI FHIR (R4) https://hapi.fhir.org/ Open-source, full CRUD, pre-loaded with
+test data. Widely used for development and
+testing.
+
+SMART on FHIR
+Sandbox
+
+https://launch.smarthealthit.org/ Supports SMART App Launch for building
+EHR-integrated apps. Includes sample
+patient data.
+
+Synthea on HAPI (load Synthea output into HAPI) Generate patients with Synthea, upload
+FHIR bundles to HAPI for a populated test
+server.
+
+Interoperability standards worth knowing
+You do not need to implement these standards for a hackathon prototype, but awareness of
+them will strengthen your concept and make it more credible to clinician judges evaluating
+workflow fit.
+• HL7 FHIR (R4): The dominant standard for health data exchange. If your prototype
+reads or writes patient data, FHIR is the format to target. Resources like Patient,
+Condition, MedicationRequest, Observation, and Encounter map directly to the clinical
+workflows described in this guide. https://hl7.org/fhir/R4/
+• CDS Hooks: An open standard for embedding clinical decision support into EHR
+workflows. If your concept involves triggering prompts or recommendations at specific
+moments (e.g., when a prescription is signed or a patient chart is opened), CDS Hooks
+defines how that integration works. https://cds-hooks.hl7.org/
+• SMART on FHIR: A framework for launching third-party apps from within an EHR. If
+your concept is an app that a clinician would use inside their medical record system,
+SMART on FHIR defines the launch, authentication, and data access patterns.
+https://docs.smarthealthit.org/
+
+Prototype tip
+For the hackathon, focus on demonstrating the clinical concept clearly. A working prototype with
+synthetic data and a credible integration story will score higher than a polished front-end with no
+clinical logic. Clinician judges care about whether the tool solves a real problem and could fit
+their workflow.

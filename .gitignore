@@ -1,0 +1,61 @@
+# Node / React
+node_modules/
+dist/
+build/
+.npm/
+.eslintcache
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables / Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Large Datasets (Synthea)
+# Uncomment these if you want to track the sample data in Git
+synthea_sample_data_csv_latest/
+synthea_sample_data_fhir_dstu2_latest/
+synthea_sample_data_fhir_latest/
+synthea_sample_data_fhir_stu3_latest/
