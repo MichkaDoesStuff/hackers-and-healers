@@ -41,7 +41,7 @@ export function TopNav({
       >
         <Bell className="size-4 text-muted-foreground" />
         <span className="font-medium text-foreground">Loop</span>
-        <span className="flex size-5 items-center justify-center rounded-full bg-critical text-xs font-semibold text-background">
+        <span className="flex size-5 items-center justify-center rounded-full bg-critical text-xs font-semibold text-white">
           {openCount}
         </span>
       </button>

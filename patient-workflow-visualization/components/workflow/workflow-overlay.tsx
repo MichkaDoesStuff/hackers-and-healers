@@ -25,7 +25,7 @@ export function WorkflowOverlay({
   if (!issue) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-3 backdrop-blur-sm sm:p-6">
       <div className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
         {/* simulated embedded SMART/CDS app chrome */}
         <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-2">

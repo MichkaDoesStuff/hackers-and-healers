@@ -7,19 +7,23 @@ export function LoopPanel({
   issues,
   onOpen,
   scopedName,
+  subtitle = "Signed in as your ClinicOS session",
+  className,
 }: {
   issues: Issue[]
   onOpen: (issue: Issue) => void
   scopedName?: string | null
+  subtitle?: string
+  className?: string
 }) {
   return (
-    <aside className="flex w-full flex-col border-l border-border lg:w-[420px]">
+    <aside className={className ?? "flex w-full flex-col border-l border-border lg:w-[420px]"}>
       <div className="flex items-baseline justify-between px-5 pb-3 pt-5">
         <h2 className="text-2xl font-semibold tracking-tight text-foreground">Loop</h2>
         <span className="text-sm text-muted-foreground">{issues.length} open</span>
       </div>
       <p className="px-5 pb-4 text-sm text-muted-foreground">
-        {scopedName ? "Launched in chart · SMART on FHIR" : "Signed in as your ClinicOS session"}
+        {scopedName ? "Launched in chart · SMART on FHIR" : subtitle}
       </p>
 
       {scopedName && (

@@ -122,9 +122,15 @@ function Canvas({ issue }: { issue: Issue }) {
         defaultEdgeOptions={{ style: { strokeWidth: 1.5 } }}
         minZoom={0.3}
       >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="oklch(0.32 0.004 60)" />
+        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="oklch(0.88 0.006 90)" />
         <Controls className="!border-border !bg-card [&_button]:!border-border [&_button]:!bg-card [&_button]:!fill-foreground [&_button:hover]:!bg-accent" />
-        <MiniMap pannable zoomable className="!bg-card" maskColor="oklch(0.16 0.004 60 / 70%)" nodeColor="oklch(0.3 0.01 60)" />
+        <MiniMap
+          pannable
+          zoomable
+          className="!bg-card"
+          maskColor="oklch(0.98 0.002 90 / 70%)"
+          nodeColor="oklch(0.75 0.01 60)"
+        />
       </ReactFlow>
 
       {/* palette */}

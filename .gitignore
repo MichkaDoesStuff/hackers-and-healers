@@ -1,8 +1,19 @@
 # Python
 .venv/
+venv/
+env/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
 .env
+.env.*
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
 
 # Node / Next.js
 node_modules/
@@ -22,6 +33,14 @@ screenshot.mjs
 shots/
 /tmp/
 
+# IDEs
+.vscode/
+.idea/
+*.swp
+
 # OS
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
+ehthumbs.db
