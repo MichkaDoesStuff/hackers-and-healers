@@ -26,6 +26,7 @@ next-env.d.ts
 data/playbooks_store.json
 data/actioned.json
 data/ground_truth.json
+data/cds_tasks.json
 
 # scratch / screenshots
 shot-*.mjs

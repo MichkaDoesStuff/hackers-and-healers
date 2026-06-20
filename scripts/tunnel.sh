@@ -6,15 +6,15 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 UI="$ROOT/patient-workflow-visualization"
 
 is_dev_server() {
-  curl -sf http://localhost:3000/sandbox 2>/dev/null | grep -qE 'browser_dev_hmr|webpack-hmr'
+  curl -sf http://127.0.0.1:3000/sandbox 2>/dev/null | grep -qE 'browser_dev_hmr|webpack-hmr'
 }
 
 ensure_production() {
-  if ! curl -sf -o /dev/null http://localhost:3000/ 2>/dev/null; then
+  if ! curl -sf -o /dev/null http://127.0.0.1:3000/ 2>/dev/null; then
     echo "Nothing on :3000 — starting production Next.js ..."
     (cd "$UI" && npm run build && npm run start -- --port 3000) &
     for _ in {1..60}; do
-      curl -sf -o /dev/null http://localhost:3000/ && break
+      curl -sf -o /dev/null http://127.0.0.1:3000/ && break
       sleep 1
     done
     return
@@ -26,7 +26,7 @@ ensure_production() {
     sleep 1
     (cd "$UI" && npm run build && npm run start -- --port 3000) &
     for _ in {1..90}; do
-      if curl -sf -o /dev/null http://localhost:3000/ && ! is_dev_server; then
+      if curl -sf -o /dev/null http://127.0.0.1:3000/ && ! is_dev_server; then
         echo "Production Next.js ready on :3000"
         return
       fi
@@ -39,6 +39,6 @@ ensure_production() {
 
 ensure_production
 
-echo "Starting tunnel → http://localhost:3000 (production)"
+echo "Starting tunnel → http://127.0.0.1:3000 (production)"
 echo "Use --protocol http2 if the default tunnel shows 530 errors."
-exec cloudflared tunnel --protocol http2 --url http://localhost:3000
+exec cloudflared tunnel --protocol http2 --url http://127.0.0.1:3000

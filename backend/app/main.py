@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import llm
+from .cds_followup import create_followup_review_task
 from .clinic import build_clinic
 from .config import CORS_ORIGINS
 from .detectors import detect_all
@@ -49,6 +50,11 @@ class ApproveReq(BaseModel):
     playbook_id: str | None = None
     message: str | None = None       # clinician-edited text overrides the draft
     approver: str = "Clinician"
+
+
+class CdsFollowupReq(BaseModel):
+    patient_id: str
+    user_id: str | None = None
 
 app = FastAPI(title="Loop API")
 
@@ -132,6 +138,20 @@ def remove_playbook(pid: str):
 def reports():
     """Impact (money + time recovered), detection accuracy, and run cost."""
     return build_reports(get_fhir())
+
+
+# --------------------------- CDS Hooks actions ------------------------------- #
+@app.post("/api/cds/followup-task")
+def cds_followup_task(req: CdsFollowupReq):
+    """Create a FHIR Task when the clinician accepts a CDS card suggestion."""
+    fhir = get_fhir()
+    pid = req.patient_id.replace("Patient/", "")
+    loops = [l for l in rank(detect_all(fhir)) if l.patient_id == pid]
+    top_loop = loops[0] if loops else None
+    try:
+        return create_followup_review_task(fhir, pid, loop=top_loop, user_id=req.user_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 # --------------------------- draft + approve ------------------------------- #
