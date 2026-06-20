@@ -57,6 +57,14 @@ export function EmbedLoop() {
     [issues, loopId],
   )
 
+  // When embedded in the sandbox shell, tell the parent to expand the panel to a
+  // full-window pop-up while a workflow is open (the side panel is too narrow for it).
+  useEffect(() => {
+    if (context.source !== "sandbox-shell") return
+    if (typeof window === "undefined" || window.parent === window) return
+    window.parent.postMessage({ type: "loop-workflow", open: Boolean(activeIssue) }, "*")
+  }, [activeIssue, context.source])
+
   const issueHref = useCallback(
     (issue: Issue) => {
       const q = embedQuery({

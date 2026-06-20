@@ -40,6 +40,7 @@ export function SandboxShell({ publicOrigin }: SandboxShellProps) {
   const fhirUrl = searchParams.get("fhirServiceUrl") ?? DEFAULT_FHIR
   const panelOpen = searchParams.get("panel") !== "0"
   const [embedPatientId, setEmbedPatientId] = useState(patientId)
+  const [workflowOpen, setWorkflowOpen] = useState(false)
 
   useEffect(() => {
     setEmbedPatientId(patientId)
@@ -82,6 +83,10 @@ export function SandboxShell({ publicOrigin }: SandboxShellProps) {
     }
 
     function onMessage(event: MessageEvent) {
+      if (event.data?.type === "loop-workflow") {
+        setWorkflowOpen(Boolean(event.data.open))
+        return
+      }
       if (event.data?.type !== "loop-open") return
       const id = event.data.patientId
       if (typeof id === "string") handleLoopOpen(id)
@@ -164,8 +169,12 @@ export function SandboxShell({ publicOrigin }: SandboxShellProps) {
         {panelOpen ? (
           <div
             key={embedPatientId}
-            className="flex h-full shrink-0 flex-col border-l border-border bg-card shadow-[-4px_0_24px_-12px_rgba(0,0,0,0.08)]"
-            style={{ width: PANEL_WIDTH }}
+            className={
+              workflowOpen
+                ? "absolute inset-0 z-30 flex h-full w-full flex-col bg-card"
+                : "flex h-full shrink-0 flex-col border-l border-border bg-card shadow-[-4px_0_24px_-12px_rgba(0,0,0,0.08)]"
+            }
+            style={workflowOpen ? undefined : { width: PANEL_WIDTH }}
           >
             <div className="flex shrink-0 items-center gap-2 border-b border-border/70 bg-primary/5 px-4 py-1.5">
               <ShieldCheck className="size-3.5 shrink-0 text-primary" aria-hidden />
