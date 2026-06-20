@@ -1,5 +1,7 @@
-import { ClinicOS } from "@/components/clinic-os"
+import { redirect } from "next/navigation"
 
+// Single experience: the front door is the CDS Hooks Sandbox embed (LoHop side panel).
+// The standalone clinic dashboard is preserved at /clinic.
 export default function Page() {
-  return <ClinicOS />
+  redirect("/sandbox")
 }

@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
+import {
+  ChevronRight,
+  PanelRightClose,
+  PanelRightOpen,
+  ShieldCheck,
+  Stethoscope,
+} from "lucide-react"
 import { embedPath, LOOP_OPEN_STORAGE_KEY } from "@/lib/embed-url"
 import { LohopMark } from "./lohop-mark"
 
@@ -99,28 +106,57 @@ export function SandboxShell({ publicOrigin }: SandboxShellProps) {
   }, [onLoopOpen])
 
   return (
-    <div className="flex h-dvh flex-col bg-[#f5f5f5]">
-      <header className="relative z-20 flex shrink-0 items-center gap-3 border-b border-border bg-white px-4 py-2">
-        <LohopMark size="sm" />
-        <div className="hidden min-w-0 flex-1 sm:block">
-          <p className="text-xs text-muted-foreground">
-            CDS Hooks Sandbox · side panel stays in sync when you click a card
+    <div className="flex h-dvh flex-col bg-background">
+      <header className="relative z-20 flex shrink-0 items-center gap-4 border-b border-border bg-card px-4 py-2.5">
+        <div className="flex min-w-0 items-center gap-3">
+          <LohopMark size="sm" />
+          <span className="hidden h-5 w-px shrink-0 bg-border sm:block" />
+          <p className="hidden min-w-0 truncate text-xs text-muted-foreground md:block">
+            An AI safety net inside the EHR — it catches clinical tasks that
+            slipped through the cracks and drafts the fix for you to approve.
           </p>
         </div>
+
+        {/* How it works — compact step hint */}
+        <div className="ml-auto hidden items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-[11px] text-muted-foreground lg:flex">
+          <span className="font-medium text-foreground">How it works</span>
+          <ChevronRight className="size-3 shrink-0 opacity-50" aria-hidden />
+          <span>chart opens</span>
+          <ChevronRight className="size-3 shrink-0 opacity-50" aria-hidden />
+          <span>LoHop flags dropped tasks</span>
+          <ChevronRight className="size-3 shrink-0 opacity-50" aria-hidden />
+          <span>review &amp; approve</span>
+        </div>
+
         <Link
           href={panelOpen ? hidePanelHref : showPanelHref}
-          className="relative z-20 ml-auto rounded-md border border-border bg-white px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-accent"
+          className="relative z-20 ml-auto flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent lg:ml-0"
         >
+          {panelOpen ? (
+            <PanelRightClose className="size-3.5 shrink-0" aria-hidden />
+          ) : (
+            <PanelRightOpen className="size-3.5 shrink-0" aria-hidden />
+          )}
           {panelOpen ? "Hide panel" : "Show panel"}
         </Link>
       </header>
 
       <div className="relative flex min-h-0 flex-1">
-        <div className="h-full min-w-0 flex-1 bg-white">
+        <div className="relative flex h-full min-w-0 flex-1 flex-col bg-card">
+          <div className="flex shrink-0 items-center gap-2 border-b border-border/70 bg-background/60 px-4 py-1.5">
+            <Stethoscope className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="truncate text-[11px] font-medium tracking-wide text-muted-foreground">
+              Clinician&apos;s chart
+              <span className="font-normal text-muted-foreground/70">
+                {" "}
+                · CDS Hooks Sandbox (demo EHR)
+              </span>
+            </span>
+          </div>
           <iframe
             title="CDS Hooks Sandbox"
             src={sandboxSrc}
-            className="h-full w-full border-0"
+            className="h-full w-full flex-1 border-0"
             allow="clipboard-read; clipboard-write"
           />
         </div>
@@ -128,13 +164,23 @@ export function SandboxShell({ publicOrigin }: SandboxShellProps) {
         {panelOpen ? (
           <div
             key={embedPatientId}
-            className="h-full shrink-0 border-l border-border bg-card shadow-[-4px_0_24px_-12px_rgba(0,0,0,0.08)]"
+            className="flex h-full shrink-0 flex-col border-l border-border bg-card shadow-[-4px_0_24px_-12px_rgba(0,0,0,0.08)]"
             style={{ width: PANEL_WIDTH }}
           >
+            <div className="flex shrink-0 items-center gap-2 border-b border-border/70 bg-primary/5 px-4 py-1.5">
+              <ShieldCheck className="size-3.5 shrink-0 text-primary" aria-hidden />
+              <span className="truncate text-[11px] font-medium tracking-wide text-foreground">
+                LoHop
+                <span className="font-normal text-muted-foreground">
+                  {" "}
+                  · open-loop assistant
+                </span>
+              </span>
+            </div>
             <iframe
               title="LoHop assistant"
               src={loopSrc}
-              className="h-full w-full border-0"
+              className="h-full w-full flex-1 border-0"
               allow="clipboard-read; clipboard-write"
             />
           </div>
