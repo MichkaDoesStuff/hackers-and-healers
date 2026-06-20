@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { Search } from "lucide-react"
-import type { Issue, Severity } from "@/lib/types"
+import type { Issue, Patient, Severity } from "@/lib/types"
 import { patientsRanked, topSeverity } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { PatientCard } from "./patient-card"
@@ -15,11 +15,18 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "clear", label: "All clear" },
 ]
 
-export function PatientsView({ onOpen }: { onOpen: (issue: Issue) => void }) {
+interface PatientsViewProps {
+  patients: Patient[]
+  loading: boolean
+  error: string | null
+  onOpen: (issue: Issue) => void
+}
+
+export function PatientsView({ patients, loading, error, onOpen }: PatientsViewProps) {
   const [filter, setFilter] = useState<Filter>("all")
   const [query, setQuery] = useState("")
 
-  const ranked = useMemo(() => patientsRanked(), [])
+  const ranked = useMemo(() => patientsRanked(patients), [patients])
   const counts = useMemo(() => {
     let critical = 0
     let warning = 0
@@ -90,10 +97,16 @@ export function PatientsView({ onOpen }: { onOpen: (issue: Issue) => void }) {
       </div>
 
       <div className="flex flex-col gap-3 overflow-y-auto px-5 pb-6">
-        {filtered.map((p) => (
+        {loading && (
+          <p className="py-12 text-center text-sm text-muted-foreground">Scanning records…</p>
+        )}
+        {error && (
+          <p className="py-12 text-center text-sm text-critical">{error}</p>
+        )}
+        {!loading && !error && filtered.map((p) => (
           <PatientCard key={p.id} patient={p} onOpen={onOpen} />
         ))}
-        {filtered.length === 0 && (
+        {!loading && !error && filtered.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground">No patients match.</p>
         )}
       </div>

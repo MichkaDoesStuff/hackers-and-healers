@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+httpx
+pydantic
+python-dotenv
+# optional — only imported when LLM_PROVIDER + key is set; system runs without them
+anthropic
+openai

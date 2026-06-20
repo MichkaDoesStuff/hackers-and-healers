@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.env
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Loop runtime data (generated, not source)
+data/playbooks_store.json
+data/actioned.json
+data/ground_truth.json
+
+# scratch / screenshots
+shot-*.mjs
+screenshot.mjs
+shots/
+/tmp/
+
+# OS
+.DS_Store
+Thumbs.db
