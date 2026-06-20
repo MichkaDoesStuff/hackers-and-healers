@@ -13,34 +13,36 @@ Clinicians lose patients in the gap between **information** and **action** — l
 
 ---
 
-## 2. The hard problem: two parallel frontends
+## 2. Two parallel frontends — **must be merged**
 
-We literally have **two frontends** in flight. This is the merge conflict your teammate is resolving.
+We have **two frontends** built in parallel. **They should be merged into one repo and one product** — not abandoned, not “pick one.” Your teammate’s job is to land both on `main`.
 
-| Track | Location | Approach |
-|-------|----------|----------|
-| **A — Embed sandbox (Vishnu / main)** | `patient-workflow-visualization/` (Next.js) | `/sandbox` iframes `sandbox.cds-hooks.org` + LoHop `/embed` side panel. CDS Hooks card links stay in-page via `/embed-bridge` + `localStorage`. |
-| **B — Standalone app (other teammate)** | `origin/prototype3` → `my-react-app/` (Vite + React) | Separate dashboard UI, own `backend/` layout. **Not** the sandbox embed model. |
+| Track | Location | What it is |
+|-------|----------|------------|
+| **A — Sandbox embed** | `patient-workflow-visualization/` (Next.js) | `/sandbox` iframes `sandbox.cds-hooks.org` + LoHop `/embed` side panel. CDS Hooks card links stay in-page via `/embed-bridge` + `localStorage`. |
+| **B — Standalone app** | `origin/prototype3` → `my-react-app/` (Vite + React) | Dashboard / clinic UI built separately. Brings its own pages, components, and layout work. |
 
 ### Merge guidance (for the person resolving conflicts)
 
-**Do not try to run both UIs as equals.** Pick one shell for the demo:
+**Goal: one `main` branch that contains both experiences.**
 
-1. **Keep `main` as source of truth** for:
-   - `backend/` (FastAPI loop detection, draft, approve, playbooks)
-   - `cds-ai-service/` (CDS Hooks webhook)
-   - `patient-workflow-visualization/` (sandbox embed + workflow modal)
-   - `scripts/start-stack.sh`, `scripts/tunnel.sh`
-   - `data/inject_loops.py`, `infra/` (local FHIR)
+1. **Merge `prototype3` into `main`** (or merge both via PR). Resolve conflicts by **integrating**, not by dropping Track A or Track B.
 
-2. **Cherry-pick from `prototype3` / `my-react-app`** only what improves LoHop:
-   - Visual polish (dashboard layout, typography, hero)
-   - Any reusable React components **if** they port cleanly to Next.js
-   - **Do not** duplicate backend logic from `prototype3/backend/` — `main/backend/` is more complete (detectors, write-back, eval, CDS follow-up task)
+2. **Both UIs stay in the product:**
+   - Keep the **sandbox embed** path (`/sandbox`, `/embed`, `/embed-bridge`, CDS integration).
+   - Keep the **standalone app** UI from `my-react-app/` (port into Next.js routes, or run as a merged package — team choice during merge).
+   - Link between them if useful (e.g. dashboard → open patient in sandbox view).
 
-3. **After merge, delete or archive** the unused duplicate (`my-react-app/` or redundant backend) so the next agent is not confused.
+3. **One shared backend** on `main`:
+   - `backend/` (FastAPI) — detectors, draft, approve, playbooks, write-back
+   - `cds-ai-service/` — CDS Hooks
+   - Reconcile any duplicate backend code from `prototype3/backend/` into this stack; **do not** leave two competing API servers.
 
-4. **Single public URL:** Cloudflare tunnel → Next.js `:3000` only. CDS discovery at `{tunnel}/cds-services`, FHIR proxy at `{tunnel}/fhir/*`, Loop API at `{tunnel}/api/*`.
+4. **Shared ops:** `scripts/start-stack.sh`, `scripts/tunnel.sh`, `data/`, `infra/`
+
+5. **Single public URL for demo:** Cloudflare tunnel → Next.js `:3000`. Proxy `/cds-services`, `/api/*`, `/fhir/*` as today.
+
+**Do not:** delete `my-react-app` work to “simplify.” **Do not:** treat the merge as “keep only the embed shell.” The whole point is **both** land on `main`.
 
 ---
 
@@ -193,9 +195,11 @@ Do **not** block the sandbox demo on solving full event simulation this weekend.
 
 ### For merge teammate (conflict resolution)
 
-- [ ] Resolve `prototype3` vs `main`; keep one frontend shell (Next.js embed path recommended for CDS demo)
-- [ ] Ensure `my-react-app` assets either ported or removed — no duplicate `backend/`
-- [ ] Confirm `main` builds: `cd patient-workflow-visualization && npm run build`
+- [ ] **Merge `prototype3` into `main`** — both frontends end up in the repo
+- [ ] **Sandbox embed** (`patient-workflow-visualization/` routes) still works: `/sandbox`, `/embed`, CDS bridge
+- [ ] **Standalone app** (`my-react-app/` UI) integrated — not discarded
+- [ ] **One** shared `backend/` + `cds-ai-service/` (dedupe `prototype3/backend/`, don’t run two APIs)
+- [ ] Confirm `main` builds: `cd patient-workflow-visualization && npm run build` (+ standalone app build if still separate)
 - [ ] Run `cds-ai-service/test-cds.sh http://127.0.0.1:3000`
 
 ### For integration agent (after merge)
@@ -292,7 +296,7 @@ cds-ai-service/test-cds.sh http://127.0.0.1:3000 triage-assistant b61008f3-84e2-
 - Simulating appointments, insurance forms, physio referrals in sandbox
 - Replacing lohp production CDS
 - SMART on FHIR launch (query-param `patientId` is fine)
-- Running two competing frontends in production
+- **Leaving the two frontends unmerged** — merge is in scope
 
 ---
 

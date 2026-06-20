@@ -210,7 +210,7 @@ FHIR write-back (Task + CommunicationRequest + Provenance)
 - Rebrand remaining "Loop" strings in CDS service discovery to "LoHop" where user-visible.
 - `README.md` quick start: mention `./scripts/start-stack.sh` + `/sandbox` URL.
 - Playwright: `scripts/test-sandbox.mjs` — assert panel list + workflow open.
-- Merge `prototype3` / `my-react-app` into `main` when stable — see `TEAMMATE_AGENT_HANDOFF.md` §2.
+- Merge `prototype3` / `my-react-app` **into** `main` — both frontends in one product. See `TEAMMATE_AGENT_HANDOFF.md` §2.
 
 ---
 
