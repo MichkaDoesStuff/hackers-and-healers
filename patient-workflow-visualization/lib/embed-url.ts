@@ -16,3 +16,16 @@ export function embedQuery(params: {
 export function embedPath(params: Parameters<typeof embedQuery>[0]): string {
   return `/embed?${embedQuery(params)}`
 }
+
+export function sandboxPath(patientId: string): string {
+  const q = new URLSearchParams({ patientId: patientId.replace(/^Patient\//, "") })
+  return `/sandbox?${q.toString()}`
+}
+
+/** Cross-tab signal when CDS opens /embed-bridge in a popup (postMessage is blocked cross-origin). */
+export const LOOP_OPEN_STORAGE_KEY = "lohop-loop-open"
+
+export function broadcastLoopOpen(patientId: string): void {
+  const payload = JSON.stringify({ patientId, ts: Date.now() })
+  localStorage.setItem(LOOP_OPEN_STORAGE_KEY, payload)
+}

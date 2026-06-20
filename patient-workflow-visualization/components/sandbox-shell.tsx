@@ -1,9 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
-import { embedPath } from "@/lib/embed-url"
+import { useSearchParams, useRouter } from "next/navigation"
+import { embedPath, LOOP_OPEN_STORAGE_KEY } from "@/lib/embed-url"
 import { LohopMark } from "./lohop-mark"
 
 const DEFAULT_PATIENT = "b61008f3-84e2-8e3f-abd9-995a23133d57"
@@ -27,12 +27,22 @@ function sandboxPageQuery(
 }
 
 export function SandboxShell({ publicOrigin }: SandboxShellProps) {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const patientId = searchParams.get("patientId") ?? DEFAULT_PATIENT
   const fhirUrl = searchParams.get("fhirServiceUrl") ?? DEFAULT_FHIR
   const panelOpen = searchParams.get("panel") !== "0"
+  const [embedPatientId, setEmbedPatientId] = useState(patientId)
 
-  const loopSrc = embedPath({ patientId, source: "sandbox-shell", hook: "patient-view" })
+  useEffect(() => {
+    setEmbedPatientId(patientId)
+  }, [patientId])
+
+  const loopSrc = embedPath({
+    patientId: embedPatientId,
+    source: "sandbox-shell",
+    hook: "patient-view",
+  })
   const hidePanelHref = sandboxPageQuery(searchParams, { panel: "0" })
   const showPanelHref = sandboxPageQuery(searchParams, { panel: null })
 
@@ -50,23 +60,42 @@ export function SandboxShell({ publicOrigin }: SandboxShellProps) {
 
   const onLoopOpen = useCallback(
     (nextPatientId: string) => {
-      // CDS card click — reload parent with panel visible and fresh embed patient
+      setEmbedPatientId(nextPatientId)
       const q = new URLSearchParams(searchParams.toString())
       q.delete("panel")
       q.set("patientId", nextPatientId)
-      window.location.assign(`${window.location.pathname}?${q.toString()}`)
+      router.replace(`?${q.toString()}`)
     },
-    [searchParams],
+    [searchParams, router],
   )
 
   useEffect(() => {
+    function handleLoopOpen(id: string) {
+      if (id.length > 0) onLoopOpen(id)
+    }
+
     function onMessage(event: MessageEvent) {
       if (event.data?.type !== "loop-open") return
       const id = event.data.patientId
-      if (typeof id === "string" && id.length > 0) onLoopOpen(id)
+      if (typeof id === "string") handleLoopOpen(id)
     }
+
+    function onStorage(event: StorageEvent) {
+      if (event.key !== LOOP_OPEN_STORAGE_KEY || !event.newValue) return
+      try {
+        const { patientId: id } = JSON.parse(event.newValue) as { patientId?: string }
+        if (typeof id === "string") handleLoopOpen(id)
+      } catch {
+        /* ignore */
+      }
+    }
+
     window.addEventListener("message", onMessage)
-    return () => window.removeEventListener("message", onMessage)
+    window.addEventListener("storage", onStorage)
+    return () => {
+      window.removeEventListener("message", onMessage)
+      window.removeEventListener("storage", onStorage)
+    }
   }, [onLoopOpen])
 
   return (
@@ -98,6 +127,7 @@ export function SandboxShell({ publicOrigin }: SandboxShellProps) {
 
         {panelOpen ? (
           <div
+            key={embedPatientId}
             className="h-full shrink-0 border-l border-border bg-card shadow-[-4px_0_24px_-12px_rgba(0,0,0,0.08)]"
             style={{ width: PANEL_WIDTH }}
           >
