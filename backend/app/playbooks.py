@@ -13,8 +13,9 @@ from pydantic import BaseModel, Field
 
 STORE_PATH = Path(__file__).resolve().parents[2] / "data" / "playbooks_store.json"
 
-# clinical-action kinds carry a non-removable approval gate at run time
-GATED_KINDS = {"order", "notify"}
+# clinical-action kinds carry a non-removable approval gate at run time — these
+# touch the outside world (chart, lab, the patient's phone, the calendar).
+GATED_KINDS = {"order", "notify", "call", "book", "calendar"}
 
 
 class Step(BaseModel):
@@ -113,6 +114,25 @@ LIBRARY: list[Playbook] = [
             ("res", "resolve", "Appointment booked", "Loop closed, visit scheduled", "Loop", None, 1120, 100),
         ]),
         edges=_chain("t", "d", "n", "rev", "res"),
+    ),
+    Playbook(
+        id="pb-appointment-booking",
+        title="AI patient callback & booking",
+        description="Call the patient with an AI voice agent (Twilio), book the slot they choose, update the clinic calendar, and write the visit back to the chart.",
+        loop_type="referral_no_response",
+        builtin=True,
+        steps=_steps([
+            ("t", "trigger", "Outreach due", "Referral/follow-up overdue — the patient needs a visit", "Loop", None, 0, 100),
+            ("d", "detect", "Rank & gather", "Confirm urgency, pull the patient's phone number", "Loop", None, 280, 100),
+            ("ai", "draft", "Draft call script", "Claude drafts what the agent should say and ask", "Loop AI",
+             "Write a short, warm phone-call opening for an AI scheduling agent calling a patient on behalf of their clinic to book an overdue follow-up appointment. State who is calling and why, then ask which day/time works best. 2-3 sentences, plain spoken language, reassuring, no medical advice or diagnosis.", 560, 100),
+            ("call", "call", "AI calls patient", "Twilio voice agent phones the patient and offers open slots", "Phone agent", None, 840, 100),
+            ("book", "book", "Book chosen slot", "Store the slot the patient picked (the appointment record)", "Loop", None, 1120, 100),
+            ("cal", "calendar", "Update calendar", "Add the visit to the clinic / Google calendar", "Loop", None, 1400, 100),
+            ("rev", "decision", "Clinician confirms", "Review the booked visit before closing", "Clinician", None, 1680, 100),
+            ("res", "resolve", "Loop closed", "Appointment booked, note written to chart", "Loop", None, 1960, 100),
+        ]),
+        edges=_chain("t", "d", "ai", "call", "book", "cal", "rev", "res"),
     ),
     Playbook(
         id="pb-billing-reconciliation",

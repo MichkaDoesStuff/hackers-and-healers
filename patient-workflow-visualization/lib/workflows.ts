@@ -47,10 +47,12 @@ const TEMPLATES: Record<IssueCategory, Template> = {
   },
   "follow-up": {
     steps: [
-      { kind: "trigger", title: "Outreach sent", detail: "Follow-up request delivered to patient", actor: "Loop", x: 0, y: 100 },
-      { kind: "decision", title: "Patient responds?", detail: "Wait window before escalation", actor: "Patient", x: 320, y: 100 },
-      { kind: "notify", title: "Second reminder", detail: "Re-send via preferred channel", actor: "Loop", x: 640, y: 100 },
-      { kind: "resolve", title: "Visit booked", detail: "Loop closed once scheduled", actor: "Loop", x: 960, y: 100 },
+      { kind: "trigger", title: "Follow-up due", detail: "Overdue follow-up detected for this patient", actor: "Loop", x: 0, y: 100 },
+      { kind: "draft", title: "Draft call script", detail: "Claude drafts what the AI agent should say and ask", actor: "Loop AI", x: 280, y: 100, prompt: "Write a short, warm phone-call opening for an AI scheduling agent calling a patient on behalf of their clinic to book an overdue follow-up appointment. State who is calling and why, then ask which day/time works best. 2-3 sentences, plain spoken language, reassuring, no medical advice or diagnosis." },
+      { kind: "call", title: "AI calls patient", detail: "Twilio voice agent phones the patient and offers open slots", actor: "Phone agent", x: 560, y: 100 },
+      { kind: "book", title: "Book chosen slot", detail: "Store the time the patient picked (the appointment record)", actor: "Loop", x: 840, y: 100 },
+      { kind: "calendar", title: "Update calendar", detail: "Add the visit to the clinic / Google calendar", actor: "Loop", x: 1120, y: 100 },
+      { kind: "resolve", title: "Visit booked", detail: "Loop closed, note written to chart", actor: "Loop", x: 1400, y: 100 },
     ],
   },
   screening: {

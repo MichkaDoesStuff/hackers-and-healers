@@ -1,17 +1,32 @@
 """Loop backend API. Serves the risk-ranked worklist the ClinicOS panel renders."""
 from __future__ import annotations
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import llm
+from .appointments import (
+    appointment_ics,
+    book_appointment,
+    get_appointment,
+    get_availability,
+    list_appointments,
+    offered_slots,
+)
 from .cds_followup import create_followup_review_task
 from .clinic import build_clinic
 from .config import CORS_ORIGINS
 from .detectors import detect_all
 from .fhir import FhirClient
 from .models import Loop
+from .phone import (
+    configured as twilio_configured,
+    gather_twiml,
+    get_call_context,
+    place_appointment_call,
+    say_hangup_twiml,
+)
 from .playbooks import (
     Playbook,
     delete_playbook,
@@ -56,6 +71,24 @@ class CdsFollowupReq(BaseModel):
     patient_id: str
     user_id: str | None = None
 
+
+class CallReq(BaseModel):
+    to_number: str                         # E.164, e.g. +14165551234
+    script: str | None = None              # opening line drafted upstream
+    purpose: str = "Schedule a follow-up appointment"
+    patient_name: str | None = None
+    auto_book: bool = True                 # demo: simulate a booked slot in one pass
+
+
+class BookReq(BaseModel):
+    patient_id: str
+    patient_name: str | None = None
+    start: str                             # ISO 8601
+    end: str | None = None
+    reason: str = "Follow-up appointment"
+    loop_id: str | None = None
+    practitioner: str | None = None
+
 app = FastAPI(title="Loop API")
 
 app.add_middleware(
@@ -73,7 +106,7 @@ def get_fhir() -> FhirClient:
 @app.get("/health")
 def health():
     fhir = get_fhir()
-    return {"status": "ok", "fhir": fhir.metadata_ok()}
+    return {"status": "ok", "fhir": fhir.metadata_ok(), "twilio": twilio_configured()}
 
 
 @app.get("/api/loops")
@@ -182,3 +215,191 @@ def approve_loop(loop_id: str, req: ApproveReq = Body(default=ApproveReq())):
     result = write_action(fhir, loop, message, req.approver)
     closed = find_loop(fhir, loop_id) is None
     return {**result, "loop_id": loop_id, "closed": closed, "model": model, "message": message}
+
+
+# --------------------- AI phone call + appointment booking ------------------- #
+@app.post("/api/loops/{loop_id}/call")
+def call_patient(loop_id: str, req: CallReq):
+    """Place an outbound AI call (Twilio) to book the patient's appointment.
+
+    Live: returns immediately with status "calling"; the TwiML voice flow books the
+    slot the patient chooses during the call (/api/voice/handle).
+    Demo (no Twilio config): the call is simulated and — when auto_book is on — the
+    first open slot is booked right away so the loop visibly closes in one pass.
+    """
+    fhir = get_fhir()
+    loop = find_loop(fhir, loop_id)
+    if not loop:
+        raise HTTPException(status_code=404, detail="loop not found")
+
+    patient_name = req.patient_name or loop.patient_name
+    call = place_appointment_call(
+        to_number=req.to_number,
+        patient_name=patient_name,
+        purpose=req.purpose,
+        script=req.script,
+        loop=loop,
+    )
+
+    appointment = None
+    if call.get("demo") and req.auto_book:
+        slots = offered_slots()
+        if slots:
+            slot = slots[0]
+            appointment = book_appointment(
+                patient_id=loop.patient_id,
+                patient_name=patient_name,
+                start=slot["start"],
+                end=slot["end"],
+                reason=f"Follow-up: {loop.title}",
+                loop=loop,
+                source="phone-agent (simulated)",
+                fhir=fhir,
+            )
+
+    return {"loop_id": loop_id, "call": call, "appointment": appointment}
+
+
+@app.get("/api/scheduling/availability")
+def scheduling_availability(days: int = 5):
+    """Open slots the phone agent (and the UI) can offer the patient."""
+    return {"slots": get_availability(days=days)}
+
+
+@app.post("/api/scheduling/book")
+def scheduling_book(req: BookReq):
+    """Lock a slot + update the calendar. Called by the AI agent's booking tool
+    mid-call, or directly from the UI."""
+    fhir = get_fhir()
+    loop = find_loop(fhir, req.loop_id) if req.loop_id else None
+    name = req.patient_name or (loop.patient_name if loop else "Patient")
+    return book_appointment(
+        patient_id=req.patient_id,
+        patient_name=name,
+        start=req.start,
+        end=req.end,
+        reason=req.reason,
+        practitioner=req.practitioner,
+        loop=loop,
+        source="phone-agent",
+        fhir=fhir,
+    )
+
+
+@app.get("/api/appointments")
+def appointments(patient: str | None = None, loop_id: str | None = None):
+    """Booked appointments (the custom-calendar store)."""
+    return {"appointments": list_appointments(patient, loop_id)}
+
+
+@app.get("/api/appointments/{appt_id}/ics")
+def appointment_ics_route(appt_id: str):
+    """Download a booked visit as an .ics — drops into any calendar app."""
+    appt = get_appointment(appt_id)
+    if not appt:
+        raise HTTPException(status_code=404, detail="appointment not found")
+    return Response(
+        content=appointment_ics(appt),
+        media_type="text/calendar",
+        headers={"Content-Disposition": f'attachment; filename="{appt_id}.ics"'},
+    )
+
+
+# ----------------------- Twilio voice (TwiML webhooks) ---------------------- #
+def _choice_to_index(digits: str | None, speech: str | None, n: int) -> int | None:
+    """Map the patient's keypad/spoken choice to a slot index (0-based), or None.
+
+    Tokenizes speech and checks ordinals before cardinals so "the second one"
+    resolves to slot 2, not slot 1 (the bare "one" inside it).
+    """
+    if digits and digits.isdigit():
+        d = int(digits)
+        return d - 1 if 1 <= d <= n else None
+    import re
+
+    tokens = set(re.findall(r"[a-z]+", (speech or "").lower()))
+    for ladder in (["first", "second", "third"], ["one", "two", "three"]):
+        for i in range(min(n, len(ladder))):
+            if ladder[i] in tokens:
+                return i
+    return None
+
+
+async def _twilio_form(request: Request) -> dict:
+    """Parse Twilio's application/x-www-form-urlencoded callback (no extra deps)."""
+    from urllib.parse import parse_qs
+
+    try:
+        body = (await request.body()).decode()
+    except Exception:  # noqa: BLE001
+        return {}
+    return {k: v[0] for k, v in parse_qs(body).items()}
+
+
+@app.post("/api/voice/answer")
+async def voice_answer(request: Request):
+    """TwiML Twilio fetches when the patient picks up — greet + offer slots."""
+    ctx = request.query_params.get("ctx", "")
+    context = get_call_context(ctx) or {}
+    name = context.get("patient_name") or "there"
+    greeting = context.get("greeting") or (
+        f"Hello {name}, this is your clinic's scheduling assistant calling to "
+        "book a follow-up appointment."
+    )
+    slots = offered_slots(3)
+    if not slots:
+        return Response(
+            say_hangup_twiml("We couldn't find an open time right now. We'll call you back. Goodbye."),
+            media_type="application/xml",
+        )
+    offer = " ".join(f"Press {i + 1} for {s['label']}." for i, s in enumerate(slots))
+    prompt = f"{greeting} {offer} Or press 0 to ask for another time."
+    return Response(
+        gather_twiml(
+            prompt,
+            action=f"/api/voice/handle?ctx={ctx}",
+            reprompt="Sorry, we didn't catch that. Our office will call you back. Goodbye.",
+        ),
+        media_type="application/xml",
+    )
+
+
+@app.post("/api/voice/handle")
+async def voice_handle(request: Request):
+    """Process the patient's choice, book the slot, and confirm."""
+    ctx = request.query_params.get("ctx", "")
+    form = await _twilio_form(request)
+    context = get_call_context(ctx) or {}
+    slots = offered_slots(3)
+    idx = _choice_to_index(form.get("Digits"), form.get("SpeechResult"), len(slots))
+    if idx is None:
+        return Response(
+            say_hangup_twiml("No problem. Our office will call you back to find a time. Goodbye."),
+            media_type="application/xml",
+        )
+    slot = slots[idx]
+    fhir = get_fhir()
+    loop = find_loop(fhir, context["loop_id"]) if context.get("loop_id") else None
+    book_appointment(
+        patient_id=context.get("patient_id") or "unknown",
+        patient_name=context.get("patient_name") or "Patient",
+        start=slot["start"],
+        end=slot["end"],
+        reason=context.get("reason") or "Follow-up appointment",
+        loop=loop,
+        source="phone-agent (twilio)",
+        fhir=fhir,
+    )
+    return Response(
+        say_hangup_twiml(
+            f"Great. You're booked for {slot['label']}. You'll get a confirmation shortly. Goodbye."
+        ),
+        media_type="application/xml",
+    )
+
+
+@app.post("/api/voice/status")
+async def voice_status(request: Request):
+    """Twilio status callback (ringing / answered / completed). Ack only."""
+    form = await _twilio_form(request)
+    return {"received": True, "call_sid": form.get("CallSid"), "status": form.get("CallStatus")}

@@ -27,6 +27,9 @@ data/playbooks_store.json
 data/actioned.json
 data/ground_truth.json
 data/cds_tasks.json
+data/appointments.json
+data/calls.json
+data/call_ctx.json
 
 # scratch / screenshots
 shot-*.mjs

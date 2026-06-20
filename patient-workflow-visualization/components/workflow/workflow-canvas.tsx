@@ -20,10 +20,13 @@ import "@xyflow/react/dist/style.css"
 import {
   Activity,
   Bell,
+  CalendarCheck,
+  CalendarPlus,
   Check,
   FileText,
   GitBranch,
   ListChecks,
+  Phone,
   Plus,
   Trash2,
   X,
@@ -38,6 +41,9 @@ const PALETTE: { kind: StepKind; label: string; icon: typeof Zap }[] = [
   { kind: "draft", label: "AI draft", icon: FileText },
   { kind: "order", label: "Order", icon: ListChecks },
   { kind: "notify", label: "Notify", icon: Bell },
+  { kind: "call", label: "Phone call", icon: Phone },
+  { kind: "book", label: "Book slot", icon: CalendarPlus },
+  { kind: "calendar", label: "Calendar", icon: CalendarCheck },
   { kind: "decision", label: "Decision", icon: GitBranch },
   { kind: "resolve", label: "Resolve", icon: Check },
 ]
@@ -83,6 +89,7 @@ function Canvas({ issue }: { issue: Issue }) {
       const id = `n-${kind}-${Date.now()}`
       const position = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
       const isAi = kind === "draft" || kind === "detect"
+      const actor = kind === "call" ? "Phone agent" : isAi ? "Loop AI" : "Loop"
       setNodes((nds) => [
         ...nds,
         {
@@ -93,8 +100,9 @@ function Canvas({ issue }: { issue: Issue }) {
             kind,
             title: `New ${label.toLowerCase()} step`,
             detail: "Click to describe this step",
-            actor: isAi ? "Loop AI" : "Loop",
+            actor,
             prompt: isAi ? DEFAULT_PROMPT : undefined,
+            calendarTarget: kind === "calendar" ? "Clinic calendar" : undefined,
           },
         },
       ])
@@ -179,6 +187,8 @@ function NodeEditor({
 }) {
   const d = node.data
   const isAi = d.kind === "draft" || d.kind === "detect"
+  const isCall = d.kind === "call"
+  const isCalendar = d.kind === "calendar"
   return (
     <div className="absolute right-4 top-4 bottom-4 flex w-80 flex-col gap-3 overflow-y-auto rounded-xl border border-border bg-card/95 p-4 backdrop-blur">
       <div className="flex items-center justify-between">
@@ -209,6 +219,28 @@ function NodeEditor({
             value={d.prompt ?? ""}
             onChange={(e) => onChange({ prompt: e.target.value })}
             placeholder={DEFAULT_PROMPT}
+          />
+        </Field>
+      )}
+
+      {isCall && (
+        <Field label="Patient phone (E.164)">
+          <input
+            className={INPUT}
+            value={d.phone ?? ""}
+            onChange={(e) => onChange({ phone: e.target.value })}
+            placeholder="+14165551234"
+          />
+        </Field>
+      )}
+
+      {isCalendar && (
+        <Field label="Calendar target">
+          <input
+            className={INPUT}
+            value={d.calendarTarget ?? ""}
+            onChange={(e) => onChange({ calendarTarget: e.target.value })}
+            placeholder="Clinic calendar / Google / webhook"
           />
         </Field>
       )}

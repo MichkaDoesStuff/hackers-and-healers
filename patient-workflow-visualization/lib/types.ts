@@ -51,6 +51,9 @@ export type StepKind =
   | "draft"
   | "order"
   | "notify"
+  | "call"
+  | "book"
+  | "calendar"
   | "decision"
   | "resolve"
 
@@ -62,4 +65,8 @@ export interface WorkflowStepData extends Record<string, unknown> {
   actor?: string
   /** editable instruction for AI steps (draft/detect) — the prompt Claude runs */
   prompt?: string
+  /** call step: E.164 phone number the AI agent dials */
+  phone?: string
+  /** calendar step: where booked visits are pushed (label, e.g. "Clinic calendar") */
+  calendarTarget?: string
 }
