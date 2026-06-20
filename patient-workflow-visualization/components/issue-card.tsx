@@ -25,13 +25,13 @@ export function IssueCard({
     <button
       onClick={() => onOpen(issue)}
       className={cn(
-        "group flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors",
+        "group relative flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ml-5",
         severitySurface[issue.severity],
         "paper-card",
   creaseClass || undefined,
       )}
     >
-      <span className={cn("mt-1.5 size-2 shrink-0 self-start rounded-full", severityDot[issue.severity])} />
+      <span className={cn("absolute -left-4 top-4 size-2 rounded-full", severityDot[issue.severity])} />
       <div className="min-w-0 flex-1">
         <div className={cn("truncate text-[15px] font-semibold leading-tight", severityText[issue.severity])}>
           {showPatient && issue.patientName !== issue.title ? `${issue.patientName} — ` : ""}
