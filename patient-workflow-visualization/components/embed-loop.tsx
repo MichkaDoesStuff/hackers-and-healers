@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import type { Issue } from "@/lib/types"
 import { sortIssues } from "@/lib/data"
 import { fetchLoops } from "@/lib/api"
+import { embedQuery } from "@/lib/embed-url"
 import { mapLoopToIssue } from "@/lib/map-loops"
 import { demoIssuesForEmbed, sandboxIssuesForPatient } from "@/lib/sandbox-data"
 import { parseCdsEmbedContext } from "@/lib/cds-context"
@@ -22,7 +23,6 @@ function isDemoEmbedSource(source: string | null): boolean {
   return source === "sandbox-shell" || source === "ehr-demo"
 }
 
-/** Issues available immediately — never wait on FHIR for sandbox embed. */
 function instantIssues(patientId: string | null, source: string | null): Issue[] {
   if (!patientId) {
     return isDemoEmbedSource(source) ? sortIssues(demoIssuesForEmbed()) : []
@@ -49,17 +49,43 @@ export function EmbedLoop() {
   const [issues, setIssues] = useState<Issue[]>(seedIssues)
   const [loading, setLoading] = useState(() => !demoEmbed && seedIssues.length === 0 && Boolean(context.patientId))
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [openIssue, setOpenIssue] = useState<Issue | null>(null)
   const [fhirName, setFhirName] = useState<string | null>(null)
 
-  // Keep in sync when URL patient changes (e.g. CDS card click in parent)
+  const loopId = searchParams.get("loop")
+  const activeIssue = useMemo(
+    () => (loopId ? issues.find((i) => i.id === loopId) ?? null : null),
+    [issues, loopId],
+  )
+
+  const issueHref = useCallback(
+    (issue: Issue) => {
+      const q = embedQuery({
+        patientId: context.patientId ?? issue.patientId,
+        source: context.source ?? undefined,
+        hook: context.hook ?? undefined,
+        loop: issue.id,
+      })
+      return `?${q}`
+    },
+    [context.patientId, context.source, context.hook],
+  )
+
+  const closeWorkflowHref = useMemo(() => {
+    const q = embedQuery({
+      patientId: context.patientId ?? "",
+      source: context.source ?? undefined,
+      hook: context.hook ?? undefined,
+      loop: null,
+    })
+    return `?${q}`
+  }, [context.patientId, context.source, context.hook])
+
   useEffect(() => {
     setIssues(seedIssues)
     setLoading(!demoEmbed && seedIssues.length === 0 && Boolean(context.patientId))
     setLoadError(null)
   }, [seedIssues, demoEmbed, context.patientId])
 
-  // Live API refresh — background for demo embed, blocking only for standalone SMART launch
   useEffect(() => {
     if (!context.patientId) return
 
@@ -98,16 +124,14 @@ export function EmbedLoop() {
       .catch(() => {})
   }, [context.patientId])
 
-  const displayName =
-    issues[0]?.patientName ??
-    fhirName ??
-    null
+  const displayName = issues[0]?.patientName ?? fhirName ?? null
 
   return (
     <div className="flex h-dvh flex-col bg-card">
       <LoopPanel
         issues={issues}
-        onOpen={setOpenIssue}
+        onOpen={() => {}}
+        issueHref={issueHref}
         compact
         loading={loading}
         patientName={displayName}
@@ -116,8 +140,8 @@ export function EmbedLoop() {
       />
 
       <WorkflowOverlay
-        issue={openIssue}
-        onClose={() => setOpenIssue(null)}
+        issue={activeIssue}
+        closeHref={closeWorkflowHref}
         compact
       />
     </div>

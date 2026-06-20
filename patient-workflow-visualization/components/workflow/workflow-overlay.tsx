@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import Link from "next/link"
 import { X } from "lucide-react"
 import type { Issue } from "@/lib/types"
 import { severityDot, severityLabel } from "@/lib/severity"
@@ -10,27 +10,52 @@ import { WorkflowRunner } from "./workflow-runner"
 export function WorkflowOverlay({
   issue,
   onClose,
+  closeHref,
   compact = false,
 }: {
   issue: Issue | null
-  onClose: () => void
+  onClose?: () => void
+  /** Plain navigation close — works without React hydration (embed iframe). */
+  closeHref?: string
   compact?: boolean
 }) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose()
-    }
-    if (issue) {
-      window.addEventListener("keydown", onKey)
-      document.body.style.overflow = "hidden"
-    }
-    return () => {
-      window.removeEventListener("keydown", onKey)
-      document.body.style.overflow = ""
-    }
-  }, [issue, onClose])
-
   if (!issue) return null
+
+  const closeButton = closeHref ? (
+    <Link
+      href={closeHref}
+      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+      aria-label="Close workflow"
+    >
+      <X className="size-5" />
+    </Link>
+  ) : (
+    <button
+      type="button"
+      onClick={onClose}
+      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+      aria-label="Close workflow"
+    >
+      <X className="size-5" />
+    </button>
+  )
+
+  const footerClose = closeHref ? (
+    <Link
+      href={closeHref}
+      className="rounded-lg border border-border px-3.5 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
+    >
+      Close
+    </Link>
+  ) : (
+    <button
+      type="button"
+      onClick={onClose}
+      className="rounded-lg border border-border px-3.5 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
+    >
+      Close
+    </button>
+  )
 
   return (
     <div
@@ -66,19 +91,18 @@ export function WorkflowOverlay({
             </div>
             <p className="mt-1 line-clamp-2 text-sm text-slate-500">{issue.detail}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-            aria-label="Close workflow"
-          >
-            <X className="size-5" />
-          </button>
+          {closeButton}
         </div>
 
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 overflow-hidden">
           <WorkflowRunner issue={issue} compact={compact} />
         </div>
+
+        {compact && (
+          <div className="flex shrink-0 justify-end border-t border-slate-100 px-3 py-2">
+            {footerClose}
+          </div>
+        )}
       </div>
     </div>
   )

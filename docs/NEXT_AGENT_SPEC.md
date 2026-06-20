@@ -1,9 +1,11 @@
 # LoHop — Next Agent Handoff Spec
 
-**Branch:** `prototype2` (primary integration branch)  
+**Branch:** `main` (integration branch)  
 **Product name:** **LoHop** — Human-in-the-loop clinical open-loop assistant (`Lo` + emphasized `H` + `op`).
 
-This document is the prioritized plan for the **next agent** to make LoHop actually work end-to-end: webhooks → FHIR → workflow modal.
+> **Start here for full context:** [`docs/TEAMMATE_AGENT_HANDOFF.md`](./TEAMMATE_AGENT_HANDOFF.md) — product vision, two-frontend merge situation, events vs data, tunnel pitfalls, and who does what next.
+
+This document is the **file-level task list** for the next agent to make LoHop work end-to-end: webhooks → FHIR → workflow modal.
 
 ---
 
@@ -11,19 +13,20 @@ This document is the prioritized plan for the **next agent** to make LoHop actua
 
 | Area | Status | Notes |
 |------|--------|-------|
-| CDS Sandbox embed workaround | ✅ | `/sandbox` iframes real sandbox + LoHop `/embed`; card links → `/embed-bridge` → `postMessage` |
-| LoHop side panel UI | ✅ | Flat list rows, LoHop branding, hide/show panel (grid collapse) |
-| CDS Hooks service | ✅ | `cds-ai-service/` on `:8000` — discovery + `patient-view` hooks |
+| CDS Sandbox embed workaround | ✅ | `/sandbox` iframes real sandbox + LoHop `/embed`; card links → `/embed-bridge` → `localStorage` |
+| LoHop side panel UI | ✅ | Flat list rows, LoHop branding, hide/show panel (`?panel=0`) |
+| CDS Hooks service | ✅ | `cds-ai-service/` on `:8000` — discovery + `patient-view` hooks + `/feedback` |
+| CDS follow-up task suggestion | ✅ | Spec-compliant feedback; demo Task fallback when lohp read-only |
 | Loop backend API | ✅ | `backend/` on `:8010` — detect, rank, draft, approve, playbooks |
 | Vertex Gemini (CDS + draft) | ✅ | `LLM_PROVIDER=vertex` + ADC; see `scripts/setup-gcloud-vertex.sh` |
 | Next.js proxy | ✅ | `/cds-services` → `:8000`, `/api/*` → `:8010`, `/fhir/*` → lohp FHIR |
-| Workflow modal UI | 🟡 | React Flow canvas opens; **Run workflow does nothing** |
-| Live FHIR loops in embed | 🟡 | `/api/clinic` against lohp is **slow/timeouts**; sandbox uses static sample data |
-| Webhook → live loops | ❌ | CDS card text is LLM-only; not wired to backend detection |
-| Draft / approve in UI | ❌ | `draftLoopMessage()` exists but is **never called**; wrong response shape |
-| Playbooks from backend | ❌ | Frontend uses hardcoded `lib/workflows.ts` templates |
+| Production tunnel | ✅ | `start-stack.sh` + `tunnel.sh`; **never** tunnel `next dev` |
+| Workflow modal UI | 🟡 | `WorkflowRunner` building-blocks; draft/approve wired; sandbox IDs are demo-only |
+| Live FHIR loops in embed | 🟡 | `fetchLoops` exists; lohp slow; sandbox uses static `sandbox-data.ts` |
+| Webhook → live loops | ❌ | CDS card text is LLM-only; not wired to `GET /api/loops?patient=` |
+| Playbooks from backend | 🟡 | API exists; frontend falls back to `lib/workflows.ts` |
 
-**Start stack:** `./scripts/start-stack.sh` (8010 + 8000 + 3000). Tunnel: `./scripts/tunnel.sh`.
+**Start stack:** `./scripts/start-stack.sh` (8010 + 8000 + production 3000). Tunnel: `./scripts/tunnel.sh` (separate terminal).
 
 **Demo patient (sandbox):** `b61008f3-84e2-8e3f-abd9-995a23133d57` (Afton Greenholt).
 
@@ -207,7 +210,7 @@ FHIR write-back (Task + CommunicationRequest + Provenance)
 - Rebrand remaining "Loop" strings in CDS service discovery to "LoHop" where user-visible.
 - `README.md` quick start: mention `./scripts/start-stack.sh` + `/sandbox` URL.
 - Playwright: `scripts/test-sandbox.mjs` — assert panel list + workflow open.
-- Merge `prototype2` → `main` when stable (PR).
+- Merge `prototype3` / `my-react-app` **into** `main` — both frontends in one product. See `TEAMMATE_AGENT_HANDOFF.md` §2.
 
 ---
 
@@ -274,4 +277,4 @@ LLM_PROVIDER=vertex
 
 ---
 
-*Last updated: integration branch `prototype2` after LoHop UI pass.*
+*Last updated: `main` after sandbox embed, CDS feedback, and production tunnel fixes. See `TEAMMATE_AGENT_HANDOFF.md`.*
