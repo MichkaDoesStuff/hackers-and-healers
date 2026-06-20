@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Activity, Inbox, AlertTriangle, FileText, ChevronRight,
   Shield, CheckCircle, Zap, BookOpen, TrendingUp, Clock, DollarSign,
-  FlaskConical, Mail, Users, ArrowRight, XCircle
+  FlaskConical, Mail, Users, ArrowRight, XCircle, Archive, CornerUpLeft
 } from 'lucide-react';
 
 // ── Planted problems (mirrors synthetic_data.py) ─────────────────────────────
@@ -56,6 +56,7 @@ const PLANTED_PROBLEMS = [
 
 export default function Dashboard() {
   const [cards, setCards] = useState([]);
+  const [archivedCards, setArchivedCards] = useState([]);
   // loading=false by default; only true when actively fetching cards
   const [loading, setLoading] = useState(false);
   const [backendStatus, setBackendStatus] = useState('connecting'); // 'connecting' | 'online' | 'offline'
@@ -117,7 +118,31 @@ export default function Dashboard() {
         source: { label: 'System' },
       }]))
       .finally(() => setLoading(false));
-  }, [selectedPatientId]);
+
+    // Also fetch archived cards when tab is archive or inbox
+    fetch('/api/archive')
+      .then(r => r.json())
+      .then(data => setArchivedCards(data.cards || []))
+      .catch(e => console.error(e));
+
+  }, [selectedPatientId, activeTab]);
+
+  const handleUnarchive = async (e, card) => {
+    e.stopPropagation();
+    try {
+      const actionStr = card.type === 'loop' ? 'unarchive_loop' : 'unarchive_task';
+      await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: actionStr, taskId: card.id, id: card.id })
+      });
+      
+      // Refresh the lists by triggering useEffect
+      setActiveTab('inbox');
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const selectedPatient = patients.find(p => p.id === selectedPatientId);
 
@@ -182,7 +207,8 @@ export default function Dashboard() {
       {/* ── Tab bar ──────────────────────────────────────────────────────────── */}
       <div className="bg-white border-b px-6 flex gap-6">
         {[
-          { id: 'inbox', label: 'Inbox', icon: <Inbox className="w-4 h-4" /> },
+          { id: 'inbox', label: 'My Tasks', icon: <Inbox className="w-4 h-4" /> },
+          { id: 'archive', label: 'Archive', icon: <Archive className="w-4 h-4" /> },
           { id: 'planted', label: 'Planted Problems', icon: <Zap className="w-4 h-4" /> },
           { id: 'accuracy', label: 'Accuracy', icon: <TrendingUp className="w-4 h-4" /> },
         ].map((tab) => (
@@ -246,7 +272,7 @@ export default function Dashboard() {
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-4">
                 <h2 className="text-base font-bold text-blue-900 mb-1 flex items-center gap-2">
                   <Zap className="w-4 h-4" />
-                  ClinicOS Global Inbox
+                  ClinicOS Global Inbox — My Tasks
                 </h2>
                 <p className="text-sm text-blue-700">
                   This is the clinic-wide dashboard. Loop's backend constantly scans the EHR for open loops and new referral faxes, 
@@ -308,6 +334,60 @@ export default function Dashboard() {
             {/* Waiting state — patient ID not yet resolved */}
             {!loading && !selectedPatientId && backendStatus === 'connecting' && (
               <div className="text-sm text-gray-400 text-center py-8">Waiting for patient list…</div>
+            )}
+          </>
+        )}
+
+        {/* ── ARCHIVE TAB ──────────────────────────────────────────────────── */}
+        {activeTab === 'archive' && (
+          <>
+            <div className="bg-gray-100 border border-gray-200 rounded-xl p-5 mb-4">
+              <h2 className="text-base font-bold text-gray-800 mb-1 flex items-center gap-2">
+                <Archive className="w-4 h-4" />
+                Completed & Archived Action Items
+              </h2>
+              <p className="text-sm text-gray-600">
+                These tasks and loops have been acknowledged or approved by a clinician. They are safely archived here and can be unarchived if needed.
+              </p>
+            </div>
+
+            {archivedCards.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center text-gray-400">
+                <CheckCircle className="w-12 h-12 text-gray-300 mb-3" />
+                <div className="font-semibold text-gray-600">Archive is empty</div>
+                <div className="text-sm mt-1">No tasks or loops have been archived yet.</div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {archivedCards.map((card, idx) => {
+                  const style = indicatorStyle(card.indicator);
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex items-start gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50 shadow-sm`}
+                    >
+                      <div className="mt-0.5"><CheckCircle className="w-5 h-5 text-gray-400" /></div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className={`font-bold text-base text-gray-700 line-through`}>{card.summary}</h4>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium bg-gray-200 text-gray-600`}>
+                            ARCHIVED
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-0.5">{card.detail}</p>
+                        <p className="text-xs text-gray-400 mt-1">Source: {card.source?.label}</p>
+                      </div>
+                      <button
+                        onClick={(e) => handleUnarchive(e, card)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
+                      >
+                        <CornerUpLeft className="w-3.5 h-3.5" />
+                        Bring Back
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </>
         )}

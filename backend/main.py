@@ -9,6 +9,8 @@ import json
 
 # In-memory storage for active tasks so the React frontend can fetch their details
 TASKS = {}
+ARCHIVED_TASKS = {}
+ARCHIVED_LOOPS = {}
 
 app = FastAPI(title="Smart Triage & CDS Portal API")
 
@@ -219,13 +221,31 @@ async def handle_action(request: Request):
     data = await request.json()
     action = data.get("action")
     task_id = data.get("taskId")
+    loop_id = data.get("id")
     print(f"Received action: {action} with data: {data}")
     
     if action == "approve_referral" and task_id in TASKS:
-        # Remove from our pending tasks so it disappears from the global inbox
-        del TASKS[task_id]
-        print(f"[DEBUG] Task {task_id} approved and removed from memory.")
+        # Move from pending tasks to archive
+        ARCHIVED_TASKS[task_id] = TASKS.pop(task_id)
+        print(f"[DEBUG] Task {task_id} approved and moved to archive.")
         
+    elif action == "unarchive_task" and task_id in ARCHIVED_TASKS:
+        # Move from archive back to pending tasks
+        TASKS[task_id] = ARCHIVED_TASKS.pop(task_id)
+        print(f"[DEBUG] Task {task_id} unarchived.")
+
+    elif action == "close_loop" and loop_id:
+        # Find the loop and save a snapshot in ARCHIVED_LOOPS
+        for loop in detect_loops():
+            if loop["id"] == loop_id:
+                ARCHIVED_LOOPS[loop_id] = loop
+                print(f"[DEBUG] Loop {loop_id} acknowledged and moved to archive.")
+                break
+
+    elif action == "unarchive_loop" and loop_id in ARCHIVED_LOOPS:
+        del ARCHIVED_LOOPS[loop_id]
+        print(f"[DEBUG] Loop {loop_id} unarchived.")
+
     return {"status": "success", "message": "Action processed and saved to EHR."}
 
 @app.get("/api/tasks/{task_id}")
@@ -285,9 +305,12 @@ def get_global_inbox():
             }]
         })
         
-    # 2. Add all open loops
+    # 2. Add all open loops that are not archived
     all_loops = detect_loops()
     for loop in all_loops:
+        if loop["id"] in ARCHIVED_LOOPS:
+            continue
+            
         indicator = "info"
         if loop["severity"] == "CRITICAL":
             indicator = "critical"
@@ -313,6 +336,41 @@ def get_global_inbox():
         
     cards.sort(key=sort_key)
     
+    return {"cards": cards}
+
+@app.get("/api/archive")
+def get_global_archive():
+    """
+    Returns ALL archived action items for the entire clinic.
+    Combines archived fax referrals (ARCHIVED_TASKS) and closed loops (ARCHIVED_LOOPS).
+    """
+    cards = []
+    
+    # 1. Add all archived referral tasks
+    for task_id, task in ARCHIVED_TASKS.items():
+        extraction = task.get("extraction", {})
+        patient_name = extraction.get("patient_name", "Unknown Patient")
+            
+        cards.append({
+            "id": task_id,
+            "type": "task",
+            "summary": f"Approved Referral for {patient_name}",
+            "indicator": "success",
+            "source": { "label": "Smart Triage Assistant" },
+            "detail": f"This referral for {extraction.get('specialty', 'specialist')} has been reviewed and saved.",
+        })
+        
+    # 2. Add all closed loops
+    for loop_id, loop in ARCHIVED_LOOPS.items():
+        cards.append({
+            "id": loop_id,
+            "type": "loop",
+            "summary": loop["summary"],
+            "indicator": "success",
+            "source": { "label": "Loop Engine" },
+            "detail": "This loop has been acknowledged and a recall was scheduled.",
+        })
+        
     return {"cards": cards}
 
 @app.get("/api/metrics")
