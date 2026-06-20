@@ -5,6 +5,7 @@ import urllib.error
 import urllib.request
 from urllib.parse import urlencode
 
+import httpx
 from fastapi import FastAPI, Request, Response
 from ai_service import call_ai_for_recommendation
 
@@ -115,8 +116,54 @@ def build_loop_demo_url(cds_request: dict) -> str:
     return f"{LOOP_APP_URL}/demo?{query}"
 
 
+def loops_card_payload(cds_request: dict) -> dict | None:
+    """Ground the card in real detected loops from the Loop backend.
+
+    Returns a {summary, detail, indicator} dict when the backend reports open
+    loops, or None on any error/timeout or when there are no open loops (so the
+    caller falls back to the AI/demo recommendation).
+    """
+    try:
+        context = cds_request.get("context") or {}
+        patient_id = (context.get("patientId") or "").replace("Patient/", "", 1)
+        if not patient_id:
+            return None
+
+        resp = httpx.get(
+            f"{LOOP_BACKEND_URL}/api/loops",
+            params={"patient": patient_id},
+            timeout=4.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        open_count = data.get("open", 0)
+        if not open_count or open_count <= 0:
+            return None
+
+        loops = data.get("loops") or []
+        bands = {(loop.get("band") or "").lower() for loop in loops}
+        bullet_lines = []
+        for loop in loops[:2]:
+            title = loop.get("title", "Untitled loop")
+            band = loop.get("band", "routine")
+            bullet_lines.append(f"- **{title}** ({band})")
+        detail = "\n".join(bullet_lines) if bullet_lines else "Open loops detected."
+
+        indicator = "warning" if bands & {"critical", "high"} else "info"
+        return {
+            "summary": f"{open_count} open loop(s) — review in LoHop",
+            "detail": detail,
+            "indicator": indicator,
+        }
+    except Exception:
+        return None
+
+
 def build_cds_response(cds_request: dict) -> dict:
-    ai_result = call_ai_for_recommendation(cds_request)
+    card_payload = loops_card_payload(cds_request)
+    if card_payload is None:
+        card_payload = call_ai_for_recommendation(cds_request)
     card_uuid = str(uuid.uuid4())
     _remember_card_context(card_uuid, cds_request)
 
@@ -124,9 +171,9 @@ def build_cds_response(cds_request: dict) -> dict:
         "cards": [
             {
                 "uuid": card_uuid,
-                "summary": ai_result["summary"],
-                "detail": ai_result["detail"],
-                "indicator": ai_result["indicator"],
+                "summary": card_payload["summary"],
+                "detail": card_payload["detail"],
+                "indicator": card_payload["indicator"],
                 "source": {"label": "Loop"},
                 "suggestions": [
                     {
