@@ -27,7 +27,8 @@ export function IssueCard({
       className={cn(
         "group flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors",
         severitySurface[issue.severity],
-        "paper-card" + creaseClass,
+        "paper-card",
+  creaseClass || undefined,
       )}
     >
       <span className={cn("mt-1.5 size-2 shrink-0 self-start rounded-full", severityDot[issue.severity])} />

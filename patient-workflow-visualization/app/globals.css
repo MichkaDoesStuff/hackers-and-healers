@@ -213,7 +213,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 24px;
+  height: 12px;
   border-bottom: 0.5px solid oklch(0.88 0.005 75 / 0.3);
   pointer-events: none;
 }
