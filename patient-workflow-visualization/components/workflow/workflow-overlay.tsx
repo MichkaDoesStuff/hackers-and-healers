@@ -1,11 +1,13 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { X } from "lucide-react"
 import type { Issue } from "@/lib/types"
 import { severityDot, severityLabel } from "@/lib/severity"
 import { cn } from "@/lib/utils"
 import { WorkflowRunner } from "./workflow-runner"
+import { WorkflowCanvas } from "./workflow-canvas"
 
 export function WorkflowOverlay({
   issue,
@@ -19,6 +21,7 @@ export function WorkflowOverlay({
   closeHref?: string
   compact?: boolean
 }) {
+  const [mode, setMode] = useState<"build" | "run">("build")
   if (!issue) return null
 
   const closeButton = closeHref ? (
@@ -94,8 +97,39 @@ export function WorkflowOverlay({
           {closeButton}
         </div>
 
+        <div className="flex shrink-0 items-center gap-1 border-b border-slate-100 bg-white px-3 py-1.5">
+          <button
+            type="button"
+            onClick={() => setMode("build")}
+            className={cn(
+              "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+              mode === "build" ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100",
+            )}
+          >
+            Build
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("run")}
+            className={cn(
+              "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+              mode === "run" ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100",
+            )}
+          >
+            Run
+          </button>
+          <span className="ml-2 truncate text-[11px] text-slate-400">
+            {mode === "build"
+              ? "Drag to connect · click a node to edit · Save workflow"
+              : "Run draft → approve → write-back"}
+          </span>
+        </div>
         <div className="min-h-0 flex-1 overflow-hidden">
-          <WorkflowRunner issue={issue} compact={compact} />
+          {mode === "build" ? (
+            <WorkflowCanvas key={issue.id} issue={issue} />
+          ) : (
+            <WorkflowRunner issue={issue} compact={compact} />
+          )}
         </div>
 
         {compact && (

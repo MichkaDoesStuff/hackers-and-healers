@@ -1,6 +1,9 @@
 """Loop backend API. Serves the risk-ranked worklist the ClinicOS panel renders."""
 from __future__ import annotations
 
+import os
+
+import httpx
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -216,3 +219,40 @@ def triage_approve(task_id: str, req: ApproveReq = Body(default=ApproveReq())):
     if not result:
         raise HTTPException(status_code=404, detail="task not found")
     return result
+
+
+class SmsReq(BaseModel):
+    to: str
+    body: str
+
+
+@app.post("/api/notify/sms")
+def notify_sms(req: SmsReq):
+    """Send an SMS via Twilio. Simulated unless TWILIO_* creds are set."""
+    sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    token = os.environ.get("TWILIO_AUTH_TOKEN")
+    from_ = os.environ.get("TWILIO_FROM")
+    if not (sid and token and from_):
+        return {
+            "sent": True,
+            "simulated": True,
+            "to": req.to,
+            "body": req.body,
+            "note": "simulated — set TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/TWILIO_FROM to send real SMS",
+        }
+    try:
+        resp = httpx.post(
+            f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json",
+            auth=(sid, token),
+            data={"From": from_, "To": req.to, "Body": req.body},
+            timeout=10.0,
+        )
+        resp.raise_for_status()
+        return {
+            "sent": True,
+            "simulated": False,
+            "sid": resp.json().get("sid"),
+            "to": req.to,
+        }
+    except Exception as e:  # noqa: BLE001 — never raise Twilio/network errors to the client
+        return {"sent": False, "error": str(e)}

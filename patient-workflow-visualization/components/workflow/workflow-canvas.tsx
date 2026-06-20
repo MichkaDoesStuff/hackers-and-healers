@@ -24,13 +24,18 @@ import {
   FileText,
   GitBranch,
   ListChecks,
+  Loader2,
   Plus,
+  Save,
+  Send,
   Trash2,
   X,
   Zap,
 } from "lucide-react"
 import type { Issue, StepKind, WorkflowStepData } from "@/lib/types"
 import { buildWorkflow, type StepNode as StepNodeType } from "@/lib/workflows"
+import { savePlaybook, sendSms } from "@/lib/api"
+import { CATEGORY_TO_LOOP_TYPE } from "@/lib/map-loops"
 import { StepNode } from "./step-node"
 
 const PALETTE: { kind: StepKind; label: string; icon: typeof Zap }[] = [
@@ -52,6 +57,10 @@ function Canvas({ issue }: { issue: Issue }) {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initial.edges)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const { screenToFlowPosition } = useReactFlow()
+
+  const [saving, setSaving] = useState(false)
+  const [savedAs, setSavedAs] = useState<string | null>(null)
+  const [saveErr, setSaveErr] = useState<string | null>(null)
 
   const nodeTypes = useMemo(() => ({ step: StepNode }), [])
   const selected = nodes.find((n) => n.id === selectedId) || null
@@ -103,6 +112,41 @@ function Canvas({ issue }: { issue: Issue }) {
     [screenToFlowPosition, setNodes],
   )
 
+  const onSave = useCallback(async () => {
+    setSaving(true)
+    setSaveErr(null)
+    setSavedAs(null)
+    try {
+      const steps = nodes.map((n) => ({
+        id: n.id,
+        kind: n.data.kind,
+        title: n.data.title,
+        detail: n.data.detail ?? "",
+        actor: n.data.actor,
+        prompt: n.data.prompt ?? null,
+        gated: n.data.kind === "order" || n.data.kind === "notify",
+        x: Math.round(n.position.x),
+        y: Math.round(n.position.y),
+        config:
+          n.data.kind === "notify"
+            ? { to: n.data.to ?? "", message: n.data.message ?? "" }
+            : {},
+      }))
+      const saved = await savePlaybook({
+        title: `${issue.title} — custom workflow`,
+        description: `Built on the canvas for ${issue.patientName}`,
+        loop_type: issue.loopType ?? CATEGORY_TO_LOOP_TYPE[issue.category] ?? "abnormal_result",
+        steps,
+        edges: edges.map((e) => ({ source: e.source, target: e.target })),
+      })
+      setSavedAs(saved.id)
+    } catch (e) {
+      setSaveErr(e instanceof Error ? e.message : "Save failed")
+    } finally {
+      setSaving(false)
+    }
+  }, [nodes, edges, issue])
+
   const onNodeClick = useCallback((_: unknown, node: Node) => setSelectedId(node.id), [])
 
   return (
@@ -150,6 +194,17 @@ function Canvas({ issue }: { issue: Issue }) {
             </button>
           )
         })}
+        <div className="my-1 h-px bg-border" />
+        <button
+          onClick={onSave}
+          disabled={saving}
+          className="flex items-center gap-2 rounded-lg bg-primary px-2.5 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+          Save workflow
+        </button>
+        {savedAs && <p className="px-1 text-[11px] text-muted-foreground">Saved as {savedAs}</p>}
+        {saveErr && <p className="px-1 text-[11px] text-critical-foreground">{saveErr}</p>}
       </div>
 
       {/* node editor */}
@@ -213,6 +268,28 @@ function NodeEditor({
         </Field>
       )}
 
+      {d.kind === "notify" && (
+        <>
+          <Field label="To (phone)">
+            <input
+              className={INPUT}
+              value={d.to ?? ""}
+              onChange={(e) => onChange({ to: e.target.value })}
+              placeholder="+1 555 010 0142"
+            />
+          </Field>
+          <Field label="Message (SMS via Twilio)">
+            <textarea
+              className={`${INPUT} min-h-20 resize-y`}
+              value={d.message ?? ""}
+              onChange={(e) => onChange({ message: e.target.value })}
+              placeholder="Your result needs review — please call the clinic."
+            />
+          </Field>
+          <TwilioTest to={d.to} message={d.message} />
+        </>
+      )}
+
       <button
         onClick={onDelete}
         className="mt-auto flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-critical-foreground transition-colors hover:bg-accent"
@@ -229,6 +306,42 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       {children}
     </label>
+  )
+}
+
+function TwilioTest({ to, message }: { to?: string; message?: string }) {
+  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+  const send = useCallback(async () => {
+    setSending(true)
+    setResult(null)
+    try {
+      const r = await sendSms(to ?? "", message ?? "")
+      setResult(
+        r.sent
+          ? r.simulated
+            ? `Simulated → ${to}`
+            : `Sent ✓ (sid ${r.sid})`
+          : `Error: ${r.error ?? "failed"}`,
+      )
+    } catch (e) {
+      setResult(e instanceof Error ? e.message : "Failed")
+    } finally {
+      setSending(false)
+    }
+  }, [to, message])
+  return (
+    <div className="flex flex-col gap-1.5">
+      <button
+        onClick={send}
+        disabled={sending || !(to && message)}
+        className="flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+      >
+        {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+        Send test SMS
+      </button>
+      {result && <p className="text-xs text-muted-foreground">{result}</p>}
+    </div>
   )
 }
 

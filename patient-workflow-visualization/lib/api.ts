@@ -126,3 +126,61 @@ export async function draftLoopMessage(loopId: string, prompt?: string): Promise
   const res = await draftLoop(loopId)
   return { text: res.draft, model: res.model }
 }
+
+/* ---- workflow builder: save user-defined playbooks + Twilio notify ---- */
+
+export interface SavePlaybookStep {
+  id: string
+  kind: string
+  title: string
+  detail?: string
+  actor?: string
+  prompt?: string | null
+  gated?: boolean
+  x?: number
+  y?: number
+  config?: Record<string, unknown>
+}
+
+export interface SavePlaybookInput {
+  id?: string
+  title: string
+  description?: string
+  loop_type: string
+  steps: SavePlaybookStep[]
+  edges: { source: string; target: string; label?: string }[]
+}
+
+/** Persist a workflow built on the canvas as a reusable playbook. */
+export async function savePlaybook(input: SavePlaybookInput): Promise<Playbook & { id: string }> {
+  const res = await fetch(`${API_BASE}/api/playbooks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: input.id ?? "",
+      title: input.title,
+      description: input.description ?? "",
+      loop_type: input.loop_type,
+      version: 1,
+      builtin: false,
+      steps: input.steps,
+      edges: input.edges,
+    }),
+  })
+  if (!res.ok) throw new Error(`Save failed: ${res.status}`)
+  return res.json()
+}
+
+/** Twilio SMS for a notify node — simulated unless the backend has Twilio creds. */
+export async function sendSms(
+  to: string,
+  body: string,
+): Promise<{ sent: boolean; simulated?: boolean; sid?: string; note?: string; error?: string }> {
+  const res = await fetch(`${API_BASE}/api/notify/sms`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to, body }),
+  })
+  if (!res.ok) throw new Error(`SMS failed: ${res.status}`)
+  return res.json()
+}

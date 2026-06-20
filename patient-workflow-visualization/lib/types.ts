@@ -62,4 +62,8 @@ export interface WorkflowStepData extends Record<string, unknown> {
   actor?: string
   /** editable instruction for AI steps (draft/detect) — the prompt Claude runs */
   prompt?: string
+  /** notify (Twilio) node: destination phone number */
+  to?: string
+  /** notify (Twilio) node: SMS message body */
+  message?: string
 }

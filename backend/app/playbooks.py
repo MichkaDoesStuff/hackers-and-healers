@@ -27,6 +27,7 @@ class Step(BaseModel):
     gated: bool = False
     x: int = 0
     y: int = 0
+    config: dict = Field(default_factory=dict)
 
 
 class Edge(BaseModel):
