@@ -1,0 +1,49 @@
+{
+  "TASKS": {
+    "task-2323bf": {
+      "taskId": "task-2323bf",
+      "patientId": "c7ec9560-58cd-4a08-874b-91e3429ef1d6",
+      "fax_text": "Loop Scheduled: Renal Function Check for the drafted imaging order",
+      "extraction": {
+        "patient_name": "Caren ['Towne']",
+        "diagnosis": "the drafted imaging order Pre-authorization",
+        "specialty": "Radiology",
+        "urgency": "Routine"
+      },
+      "patient_context": "System created a PAMA AUC pre-authorization loop for the drafted imaging order.",
+      "status": "ready",
+      "created_at": "2026-06-20T17:11:41.916172"
+    },
+    "task-bb972e": {
+      "taskId": "task-bb972e",
+      "patientId": "c7ec9560-58cd-4a08-874b-91e3429ef1d6",
+      "fax_text": "Loop Scheduled: Niacin 25 MG Oral Tablet Efficacy Follow-up",
+      "extraction": {
+        "patient_name": "Caren ['Towne']",
+        "diagnosis": "Niacin 25 MG Oral Tablet efficacy review",
+        "specialty": "Pharmacy",
+        "urgency": "Routine"
+      },
+      "patient_context": "System created a follow-up loop on order sign for Niacin 25 MG Oral Tablet.",
+      "status": "ready",
+      "created_at": "2026-06-20T17:11:42.031493"
+    }
+  },
+  "ARCHIVED_TASKS": {
+    "task-55304e": {
+      "taskId": "task-55304e",
+      "patientId": "bc26b944-006c-4514-ac45-72100756b110",
+      "fax_text": "Loop Scheduled: Inulin 833 MG Oral Capsule Efficacy Follow-up",
+      "extraction": {
+        "patient_name": "Leon ['Shields']",
+        "diagnosis": "Inulin 833 MG Oral Capsule efficacy review",
+        "specialty": "Pharmacy",
+        "urgency": "Routine"
+      },
+      "patient_context": "System created a follow-up loop on order sign for Inulin 833 MG Oral Capsule.",
+      "status": "ready",
+      "created_at": "2026-06-20T16:58:39.198684"
+    }
+  },
+  "ARCHIVED_LOOPS": {}
+}

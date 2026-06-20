@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Activity, Inbox, AlertTriangle, FileText, ChevronRight,
   Shield, CheckCircle, Zap, BookOpen, TrendingUp, Clock, DollarSign,
-  FlaskConical, Mail, Users, ArrowRight, XCircle, Archive, CornerUpLeft
+  FlaskConical, Mail, Users, ArrowRight, XCircle, Archive, CornerUpLeft, Trash2
 } from 'lucide-react';
 
 // ── Planted problems (mirrors synthetic_data.py) ─────────────────────────────
@@ -139,6 +139,21 @@ export default function Dashboard() {
       
       // Refresh the lists by triggering useEffect
       setActiveTab('inbox');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeletePermanently = async (e, cardId) => {
+    e.stopPropagation();
+    try {
+      await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_loop_permanently', id: cardId })
+      });
+      // Refresh archive tab
+      setActiveTab('archive');
     } catch (err) {
       console.error(err);
     }
@@ -377,13 +392,24 @@ export default function Dashboard() {
                         <p className="text-sm text-gray-500 mt-0.5">{card.detail}</p>
                         <p className="text-xs text-gray-400 mt-1">Source: {card.source?.label}</p>
                       </div>
-                      <button
-                        onClick={(e) => handleUnarchive(e, card)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
-                      >
-                        <CornerUpLeft className="w-3.5 h-3.5" />
-                        Bring Back
-                      </button>
+                      <div className="flex flex-col gap-2 shrink-0">
+                        <button
+                          onClick={(e) => handleUnarchive(e, card)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
+                        >
+                          <CornerUpLeft className="w-3.5 h-3.5" />
+                          Bring Back
+                        </button>
+                        {card.type === 'loop' && (
+                          <button
+                            onClick={(e) => handleDeletePermanently(e, card.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
