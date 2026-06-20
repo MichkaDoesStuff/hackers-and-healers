@@ -5,10 +5,13 @@ import { Handle, Position, type NodeProps } from "@xyflow/react"
 import {
   Activity,
   Bell,
+  CalendarCheck,
+  CalendarPlus,
   Check,
   FileText,
   GitBranch,
   ListChecks,
+  Phone,
   Zap,
 } from "lucide-react"
 import type { StepKind, WorkflowStepData } from "@/lib/types"
@@ -23,6 +26,9 @@ const META: Record<
   draft: { label: "AI draft", icon: FileText, accent: "text-foreground", ring: "border-border" },
   order: { label: "Order", icon: ListChecks, accent: "text-warning-foreground", ring: "border-warning-surface/60" },
   notify: { label: "Notify", icon: Bell, accent: "text-warning-foreground", ring: "border-warning-surface/60" },
+  call: { label: "Phone call", icon: Phone, accent: "text-warning-foreground", ring: "border-warning-surface/60" },
+  book: { label: "Book slot", icon: CalendarPlus, accent: "text-foreground", ring: "border-border" },
+  calendar: { label: "Calendar", icon: CalendarCheck, accent: "text-healthy-foreground", ring: "border-healthy-surface/60" },
   decision: { label: "Decision", icon: GitBranch, accent: "text-foreground", ring: "border-border" },
   resolve: { label: "Resolve", icon: Check, accent: "text-healthy-foreground", ring: "border-healthy-surface/60" },
 }

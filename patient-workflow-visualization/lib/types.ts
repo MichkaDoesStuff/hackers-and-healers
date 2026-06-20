@@ -51,6 +51,9 @@ export type StepKind =
   | "draft"
   | "order"
   | "notify"
+  | "call"
+  | "book"
+  | "calendar"
   | "decision"
   | "resolve"
 
@@ -66,4 +69,8 @@ export interface WorkflowStepData extends Record<string, unknown> {
   to?: string
   /** notify (Twilio) node: SMS message body */
   message?: string
+  /** call step: E.164 phone number the AI agent dials */
+  phone?: string
+  /** calendar step: where booked visits are pushed (label, e.g. "Clinic calendar") */
+  calendarTarget?: string
 }
